@@ -1,0 +1,6 @@
+/misc
+~$*
+node_modules
+.env
+/dist
+/build

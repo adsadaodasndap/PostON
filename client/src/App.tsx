@@ -1,64 +1,148 @@
-import StarIcon from '@mui/icons-material/Star'
-import { Button, Checkbox } from '@mui/material'
-import Box from '@mui/material/Box'
-import FormControlLabel from '@mui/material/FormControlLabel'
-import FormGroup from '@mui/material/FormGroup'
-import Rating from '@mui/material/Rating'
+// App.tsx
 import * as React from 'react'
-import { toast } from 'react-toastify'
+import {
+  Box,
+  CssBaseline,
+  Drawer,
+  AppBar,
+  Toolbar,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Typography,
+  IconButton,
+} from '@mui/material'
+import { BrowserRouter, Routes, Route, useNavigate } from 'react-router-dom'
+import MenuIcon from '@mui/icons-material/Menu'
+import PersonIcon from '@mui/icons-material/Person'
+import InventoryIcon from '@mui/icons-material/Inventory'
+import DirectionsBikeIcon from '@mui/icons-material/DirectionsBike'
+import QrCodeIcon from '@mui/icons-material/QrCode'
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings'
+import { ToastContainer } from 'react-toastify'
+import 'react-toastify/dist/ReactToastify.css'
 
-const labels: { [index: number]: string } = {
-  0.5: 'Useless',
-  1: 'Useless+',
-  1.5: 'Poor',
-  2: 'Poor+',
-  2.5: 'Ok',
-  3: 'Ok+',
-  3.5: 'Good',
-  4: 'Good+',
-  4.5: 'Excellent',
-  5: 'Excellent+',
-}
+import UserPage from './User'
+import WorkerPage from './Worker'
+import CourierPage from './Courier'
+import LockerPage from './Locker'
+import AdminPage from './Admin'
 
-function getLabelText(value: number) {
-  return `${value} Star${value !== 1 ? 's' : ''}, ${labels[value]}`
-}
-const App = () => {
-  const [value, setValue] = React.useState<number | null>(2)
-  const [hover, setHover] = React.useState(-1)
+const drawerWidth = 260
+
+function Layout() {
+  const [mobileOpen, setMobileOpen] = React.useState(false)
+  const navigate = useNavigate()
+
+  const menu = [
+    { text: 'Пользователь', icon: <PersonIcon />, path: '/user' },
+    { text: 'Рабочий', icon: <InventoryIcon />, path: '/worker' },
+    { text: 'Курьер', icon: <DirectionsBikeIcon />, path: '/courier' },
+    { text: 'Админ', icon: <AdminPanelSettingsIcon />, path: '/admin' },
+  ]
+
+  const drawer = (
+    <div>
+      <Toolbar>
+        <Typography
+          variant="h6"
+          sx={{ mx: 'auto', color: '#6f2dbd', fontWeight: 700 }}
+        >
+          PostON
+        </Typography>
+      </Toolbar>
+      <List>
+        {menu.map((item) => (
+          <ListItem key={item.text} disablePadding>
+            <ListItemButton onClick={() => navigate(item.path)}>
+              <ListItemIcon>{item.icon}</ListItemIcon>
+              <ListItemText primary={item.text} />
+            </ListItemButton>
+          </ListItem>
+        ))}
+      </List>
+    </div>
+  )
+
   return (
-    <>
-      <div>
-        <FormGroup>
-          <Button onClick={() => toast.error(`Info!`)}>fgujk</Button>
-          <FormControlLabel
-            control={<Checkbox defaultChecked />}
-            label="Label"
-          />
-          <FormControlLabel required control={<Checkbox />} label="Required" />
-          <FormControlLabel disabled control={<Checkbox />} label="Disabled" />
-        </FormGroup>
-      </div>
-      <Box sx={{ width: 200, display: 'flex', alignItems: 'center' }}>
-        <Rating
-          name="hover-feedback"
-          value={value}
-          precision={0.5}
-          getLabelText={getLabelText}
-          onChange={(event, newValue) => {
-            setValue(newValue)
+    <Box sx={{ display: 'flex' }}>
+      <CssBaseline />
+      <AppBar position="fixed" sx={{ bgcolor: '#6f2dbd' }}>
+        <Toolbar>
+          <IconButton
+            color="inherit"
+            edge="start"
+            onClick={() => setMobileOpen(!mobileOpen)}
+            sx={{ mr: 2, display: { sm: 'none' } }}
+          >
+            <MenuIcon />
+          </IconButton>
+          <Typography variant="h6" noWrap component="div">
+            Почтовое отделение PostON
+          </Typography>
+        </Toolbar>
+      </AppBar>
+      <Box
+        component="nav"
+        sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
+      >
+        <Drawer
+          variant="temporary"
+          open={mobileOpen}
+          onClose={() => setMobileOpen(false)}
+          ModalProps={{ keepMounted: true }}
+          sx={{
+            display: { xs: 'block', sm: 'none' },
+            '& .MuiDrawer-paper': {
+              boxSizing: 'border-box',
+              width: drawerWidth,
+            },
           }}
-          onChangeActive={(event, newHover) => {
-            setHover(newHover)
+        >
+          {drawer}
+        </Drawer>
+        <Drawer
+          variant="permanent"
+          sx={{
+            display: { xs: 'none', sm: 'block' },
+            '& .MuiDrawer-paper': {
+              boxSizing: 'border-box',
+              width: drawerWidth,
+            },
           }}
-          emptyIcon={<StarIcon style={{ opacity: 0.55 }} fontSize="inherit" />}
-        />
-        {value !== null && (
-          <Box sx={{ ml: 2 }}>{labels[hover !== -1 ? hover : value]}</Box>
-        )}
+          open
+        >
+          {drawer}
+        </Drawer>
       </Box>
-    </>
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          p: 3,
+          width: { sm: `calc(100% - ${drawerWidth}px)` },
+          mt: 8,
+        }}
+      >
+        <Routes>
+          <Route path="/user" element={<UserPage />} />
+          <Route path="/worker" element={<WorkerPage />} />
+          <Route path="/courier" element={<CourierPage />} />
+          <Route path="/locker" element={<LockerPage />} />
+          <Route path="/admin" element={<AdminPage />} />
+        </Routes>
+        <ToastContainer theme="colored" />
+      </Box>
+    </Box>
   )
 }
 
-export default App
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Layout />
+    </BrowserRouter>
+  )
+}

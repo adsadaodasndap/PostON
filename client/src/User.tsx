@@ -1,46 +1,62 @@
 import * as React from 'react'
-import Box from '@mui/material/Box'
-import Input from '@mui/material/Input'
-import InputLabel from '@mui/material/InputLabel'
-import InputAdornment from '@mui/material/InputAdornment'
-import FormControl from '@mui/material/FormControl'
-import TextField from '@mui/material/TextField'
-import AccountCircle from '@mui/icons-material/AccountCircle'
+import {
+  Box,
+  Button,
+  Rating,
+  Stack,
+  TextField,
+  Typography,
+  Paper,
+} from '@mui/material'
+import { toast } from 'react-toastify'
 
-export default function InputWithIcon() {
+export default function UserPage() {
+  const [courierRate, setCourierRate] = React.useState<number | null>(0)
+  const [lockerRate, setLockerRate] = React.useState<number | null>(0)
+  const [productRate, setProductRate] = React.useState<number | null>(0)
+  const [comment, setComment] = React.useState('')
+
+  const submit = () => {
+    if (!courierRate || !lockerRate || !productRate) {
+      toast.error('Поставьте все оценки!')
+      return
+    }
+    toast.success('Спасибо за отзыв!')
+    setComment('')
+    setCourierRate(0)
+    setLockerRate(0)
+    setProductRate(0)
+  }
+
   return (
-    <Box sx={{ '& > :not(style)': { m: 1 } }}>
-      <FormControl variant="standard">
-        <InputLabel htmlFor="input-with-icon-adornment">
-          With a start adornment
-        </InputLabel>
-        <Input
-          id="input-with-icon-adornment"
-          startAdornment={
-            <InputAdornment position="start">
-              <AccountCircle />
-            </InputAdornment>
-          }
+    <Paper sx={{ p: 3 }}>
+      <Typography variant="h5" gutterBottom>
+        Оцените доставку
+      </Typography>
+      <Stack spacing={3} sx={{ mt: 2 }}>
+        <Box>
+          <Typography>Курьер</Typography>
+          <Rating value={courierRate} onChange={(_, v) => setCourierRate(v)} />
+        </Box>
+        <Box>
+          <Typography>Постамат</Typography>
+          <Rating value={lockerRate} onChange={(_, v) => setLockerRate(v)} />
+        </Box>
+        <Box>
+          <Typography>Товар</Typography>
+          <Rating value={productRate} onChange={(_, v) => setProductRate(v)} />
+        </Box>
+        <TextField
+          label="Комментарий"
+          multiline
+          minRows={3}
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
         />
-      </FormControl>
-      <TextField
-        id="input-with-icon-textfield"
-        label="TextField"
-        slotProps={{
-          input: {
-            startAdornment: (
-              <InputAdornment position="start">
-                <AccountCircle />
-              </InputAdornment>
-            ),
-          },
-        }}
-        variant="standard"
-      />
-      <Box sx={{ display: 'flex', alignItems: 'flex-end' }}>
-        <AccountCircle sx={{ color: 'action.active', mr: 1, my: 0.5 }} />
-        <TextField id="input-with-sx" label="With sx" variant="standard" />
-      </Box>
-    </Box>
+        <Button variant="contained" onClick={submit}>
+          Отправить отзыв
+        </Button>
+      </Stack>
+    </Paper>
   )
 }

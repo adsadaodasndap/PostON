@@ -17,6 +17,13 @@ type Parcel = {
   status: 'в отделении' | 'забрана'
 }
 
+const App = () => {
+  useEffect(() => {
+    const sio = io('http://192.168.100.1/',a1~)
+  }
+)
+}
+
 export default function App() {
   const [parcels, setParcels] = React.useState<Parcel[]>([
     { id: 1, title: 'Post#1', from: 'Post#1', status: 'в отделении' },

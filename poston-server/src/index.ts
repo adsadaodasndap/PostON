@@ -7,8 +7,7 @@ import fileUpload from 'express-fileupload'
 import cfg from './config.js'
 import router from './routes/index.js'
 import { sio_chat } from './controllers/sioControllers.js'
-//import sequelize from './db.js'
-//fimport { sio_chat, sio_middleware } from './controllers/sio_controller.js'
+import sequelize from './db/db.js'
 
 const PORT = cfg.PORT
 
@@ -58,10 +57,10 @@ io.on('connection', sio_chat)
 
 const start = async () => {
   try {
-    // await sequelize.authenticate()
-    // await sequelize.sync({
-    //   // alter: true,
-    // })
+    await sequelize.authenticate()
+    await sequelize.sync({
+      //alter: true,
+    })
 
     server.listen(PORT, () => console.log(`Server started on port ${PORT}`))
   } catch (e) {

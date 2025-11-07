@@ -1,16 +1,8 @@
 import { Request, Response } from 'express'
+import { User } from '../db/models'
 import unexpectedError from './unexpectedError'
-import { randomUUID } from 'crypto'
 
-type User = {
-  first_name: string
-  last_name: string
-  email: string
-  password: string
-}
-const userStore: User[] = []
-
-export const signUp = (req: Request, res: Response) => {
+export const signUp = async (req: Request, res: Response) => {
   try {
     const { first_name, last_name, email, password } = req.body
 
@@ -19,22 +11,19 @@ export const signUp = (req: Request, res: Response) => {
         message: 'Введите все данные',
       })
 
-    const candidate = userStore.find((u) => u.email === email)
+    const candidate = await User.findOne({ where: { email } })
 
     if (candidate)
       return res.status(409).json({
         message: 'Данная почта уже зарегестрирована',
       })
 
-    const newUser = {
-      id: randomUUID(),
-      first_name,
-      last_name,
-      email,
+    const newUser = await User.create({
       password,
-    }
-
-    userStore.push(newUser)
+      email,
+      last_name,
+      role: 'BUYER',
+    })
 
     return res.status(201).json({
       message: 'Пользователь успешно заргестрирован!',
@@ -45,7 +34,7 @@ export const signUp = (req: Request, res: Response) => {
   }
 }
 
-export const signIn = (req: Request, res: Response) => {
+export const signIn = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body
 
@@ -54,7 +43,7 @@ export const signIn = (req: Request, res: Response) => {
         message: 'Введите все данные',
       })
 
-    const candidate = userStore.find((u) => u.email === email)
+    const candidate = await User.findOne({ where: { email } })
 
     if (!candidate)
       return res.status(401).json({
@@ -73,11 +62,17 @@ export const signIn = (req: Request, res: Response) => {
     unexpectedError(res, e)
   }
 }
-export const getUsers = (req: Request, res: Response) => {
+export const getUsers = async (req: Request, res: Response) => {
   try {
-    return res.json({
-      users: userStore,
-    })
+    const { id } = req.query
+
+    if (id && typeof id === 'string') {
+      return res.json({ user: await User.findByPk(id) })
+    } else {
+      return res.json({
+        users: await User.findAll(),
+      })
+    }
   } catch (e) {
     unexpectedError(res, e)
   }

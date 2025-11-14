@@ -1,6 +1,10 @@
 import { Request, Response } from 'express'
 import { User } from '../db/models'
-import unexpectedError from './unexpectedError'
+import unexpectedError from '../helpers/unexpectedError'
+import cfg from '../config'
+import { OAuth2Client } from 'google-auth-library'
+import { generateJwt } from '../helpers/generateJwt'
+import bcrypt from 'bcryptjs'
 
 export const signUp = async (req: Request, res: Response) => {
   try {
@@ -21,18 +25,20 @@ export const signUp = async (req: Request, res: Response) => {
     const newUser = await User.create({
       password,
       email,
-      last_name,
+      name: first_name + ' ' + last_name,
       role: 'BUYER',
     })
 
     return res.status(201).json({
-      message: 'Пользователь успешно заргестрирован!',
+      message: 'Пользователь успешно зарегистрирован!',
       user: newUser,
     })
   } catch (e) {
     unexpectedError(res, e)
   }
 }
+
+const googleClient = new OAuth2Client(cfg.GOOGLE_CLIENT_ID)
 
 export const signIn = async (req: Request, res: Response) => {
   try {
@@ -55,7 +61,7 @@ export const signIn = async (req: Request, res: Response) => {
       })
 
     return res.json({
-      message: `Добро пожаловать, ${candidate.first_name}`,
+      message: `Добро пожаловать, ${candidate.name}`,
       user: candidate,
     })
   } catch (e) {
@@ -71,6 +77,41 @@ export const getUsers = async (req: Request, res: Response) => {
     } else {
       return res.json({
         users: await User.findAll(),
+      })
+    }
+  } catch (e) {
+    unexpectedError(res, e)
+  }
+}
+export const googleAuth = async (req: Request, res: Response) => {
+  try {
+    const { idToken } = req.body
+    const ticket = await googleClient.verifyIdToken({
+      idToken,
+      audience: cfg.GOOGLE_CLIENT_ID,
+    })
+
+    const payload = ticket.getPayload()
+    const email = payload?.email
+
+    if (!email) return res.status(400).json({ message: 'Invalid token' })
+
+    let user = await User.findOne({ where: { email } })
+    if (!user) {
+      user = await User.create({
+        email,
+        name: payload.given_name + ' ' + payload.family_name,
+        // photoURL: payload.picture,
+        password: bcrypt.hashSync('googleauthextpassword'),
+        role: 'BUYER',
+      })
+    }
+
+    if (user) {
+      return res.json({
+        message: `Добро пожаловать, ${user.name}!`,
+        user,
+        token: generateJwt(user.id, user.role),
       })
     }
   } catch (e) {

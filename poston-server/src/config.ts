@@ -15,6 +15,7 @@ const cfg = {
   SERVER: e.SERVER || 'http://localhost:3500',
   GPT_KEY: e.GPT_KEY || 'xxxx',
   SECRET_KEY: e.SECRET_KEY || '123456789',
+  GOOGLE_CLIENT_ID: e.GOOGLE_CLIENT_ID || 'your-google-client-id',
   PORT: Number(e.PORT) || 3500,
 }
 

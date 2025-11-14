@@ -15,7 +15,6 @@ import {
   HasOne,
 } from 'sequelize-typescript'
 
-/* ===================== Users ===================== */
 export type UserRole = 'ADMIN' | 'SELLER' | 'BUYER' | 'COURIER'
 
 interface UserCreationAttributes {
@@ -53,16 +52,13 @@ export class User extends Model<User, UserCreationAttributes> {
   @Column(DataType.STRING)
   declare email: string
 
-  // Покупки, совершённые пользователем
   @HasMany(() => Purchase, { foreignKey: 'user_id' })
   declare purchases: Purchase[]
 
-  // Доставки, где пользователь выступает курьером
   @HasMany(() => Purchase, { foreignKey: 'courier_id' })
   declare deliveries: Purchase[]
 }
 
-/* ===================== Branches ===================== */
 interface BranchCreationAttributes {
   post_rating: number
   adress: string
@@ -76,7 +72,7 @@ export class Branch extends Model<Branch, BranchCreationAttributes> {
   declare id: number
 
   @AllowNull(false)
-  @Column(DataType.INTEGER) // int(5) логичнее как INTEGER с валидацией на уровне приложения
+  @Column(DataType.INTEGER)
   declare post_rating: number
 
   @AllowNull(false)
@@ -86,8 +82,6 @@ export class Branch extends Model<Branch, BranchCreationAttributes> {
   @HasMany(() => Purchase)
   declare purchases: Purchase[]
 }
-
-/* ===================== Postomat ===================== */
 interface PostomatCreationAttributes {
   adress: string
   lat?: number
@@ -118,7 +112,6 @@ export class Postomat extends Model<Postomat, PostomatCreationAttributes> {
   declare purchases: Purchase[]
 }
 
-/* ===================== Slots ===================== */
 interface SlotCreationAttributes {
   postomat_id: number
   width: number
@@ -157,7 +150,6 @@ export class Slot extends Model<Slot, SlotCreationAttributes> {
   declare purchases: Purchase[]
 }
 
-/* ===================== Product ===================== */
 interface ProductCreationAttributes {
   name: string
   cost: number
@@ -202,7 +194,6 @@ export class Product extends Model<Product, ProductCreationAttributes> {
   declare purchases: Purchase[]
 }
 
-/* ===================== Review ===================== */
 interface ReviewCreationAttributes {
   points_product: number
   points_delivery: number
@@ -237,8 +228,6 @@ export class Review extends Model<Review, ReviewCreationAttributes> {
   @BelongsTo(() => Purchase)
   declare purchase: Purchase
 }
-
-/* ===================== Purchase ===================== */
 export type DeliveryType = 'BRANCH' | 'POSTOMAT' | 'COURIER'
 
 interface PurchaseCreationAttributes {
@@ -247,7 +236,7 @@ interface PurchaseCreationAttributes {
   date_buy?: Date
   date_send?: Date
   date_receive?: Date
-  delivery_type: DeliveryType // 1=branch, 2=postomat, 3=courier в ERD; тут читаемый ENUM
+  delivery_type: DeliveryType
   branch_id?: number
   postomat_id?: number
   courier_id?: number
@@ -292,12 +281,10 @@ export class Purchase extends Model<Purchase, PurchaseCreationAttributes> {
   @Column(DataType.INTEGER)
   declare postomat_id: number
 
-  // курьер — это пользователь с ролью COURIER
   @ForeignKey(() => User)
   @Column(DataType.INTEGER)
   declare courier_id: number
 
-  // слот постамата
   @ForeignKey(() => Slot)
   @Column(DataType.INTEGER)
   declare postomat_slot: number
@@ -324,5 +311,4 @@ export class Purchase extends Model<Purchase, PurchaseCreationAttributes> {
   declare review: Review
 }
 
-/* ===================== Register all ===================== */
 sequelize.addModels([User, Branch, Postomat, Slot, Product, Review, Purchase])

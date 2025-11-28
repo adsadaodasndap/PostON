@@ -8,7 +8,7 @@ import {
   Typography,
   Chip,
 } from '@mui/material'
-import { Postomat, Purchase, Slot, User } from './types'
+import { Postomat, Purchase, Slot, User } from '../types'
 
 type PostomatScreenState = {
   postomat: Postomat

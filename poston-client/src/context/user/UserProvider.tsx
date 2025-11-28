@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { io, type Socket } from 'socket.io-client'
 import { verify } from '../../http/API'
-import { baseWSURL } from '../../types/config'
+import { baseWSURL } from '../../config'
 import { UserContext } from './UserContext'
 
 export interface UserData {

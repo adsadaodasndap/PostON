@@ -1,7 +1,22 @@
 import { Box, Button, Paper, Stack, TextField, Typography } from '@mui/material'
-import { Link } from 'react-router-dom'
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { signIn } from './http/API'
+import { useUser } from './context/user/useUser'
 
 export default function Login() {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const { login } = useUser()
+  const navigate = useNavigate()
+  const submitSignIn = async () => {
+    const res = await signIn(email, password)
+
+    if (res.token) {
+      login(res.user, res.token)
+      navigate('/app')
+    }
+  }
   return (
     <Box
       sx={{
@@ -26,18 +41,33 @@ export default function Login() {
           Вход в PostON
         </Typography>
         <Stack spacing={2}>
-          <TextField label="Логин" variant="outlined" fullWidth />
+          <TextField
+            label="Email"
+            type="email"
+            variant="outlined"
+            fullWidth
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+
           <TextField
             label="Пароль"
             type="password"
             variant="outlined"
             fullWidth
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
           />
-          <Link to="/app" style={{ textDecoration: 'none' }}>
-            <Button fullWidth variant="contained" sx={{ bgcolor: '#6f2dbd' }}>
-              Войти
-            </Button>
-          </Link>
+
+          <Button
+            onClick={submitSignIn}
+            fullWidth
+            variant="contained"
+            sx={{ bgcolor: '#6f2dbd' }}
+          >
+            Войти
+          </Button>
+
           <Link to="/reg" style={{ textDecoration: 'none' }}>
             <Button fullWidth>Регистрация</Button>
           </Link>

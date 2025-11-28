@@ -23,6 +23,9 @@ interface UserCreationAttributes {
   phone?: string
   password: string
   email: string
+  activation_code?: string
+  active?: boolean
+  is_google?: boolean
 }
 
 @Table({ timestamps: true })
@@ -51,6 +54,21 @@ export class User extends Model<User, UserCreationAttributes> {
   @AllowNull(false)
   @Column(DataType.STRING)
   declare email: string
+
+  @Column(DataType.STRING)
+  declare activation_code: string
+
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  declare active: boolean
+
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  declare tg_id: string | null
+
+  @Default(false)
+  @Column(DataType.BOOLEAN)
+  declare is_google: boolean
 
   @HasMany(() => Purchase, { foreignKey: 'user_id' })
   declare purchases: Purchase[]

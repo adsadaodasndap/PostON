@@ -32,6 +32,7 @@ export const signUp = async (req: Request, res: Response) => {
     return res.status(201).json({
       message: 'Пользователь успешно зарегистрирован!',
       user: newUser,
+      token: generateJwt(newUser.id, newUser.role),
     })
   } catch (e) {
     unexpectedError(res, e)
@@ -63,6 +64,7 @@ export const signIn = async (req: Request, res: Response) => {
     return res.json({
       message: `Добро пожаловать, ${candidate.name}`,
       user: candidate,
+      token: generateJwt(candidate.id, candidate.role),
     })
   } catch (e) {
     unexpectedError(res, e)

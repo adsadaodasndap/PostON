@@ -14,7 +14,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-import type { Purchase } from '../types'
+import type { Purchase } from './types'
 type RatingState = {
   pointsProduct: number | null
   pointsDelivery: number | null

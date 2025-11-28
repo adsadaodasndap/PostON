@@ -9,7 +9,7 @@ import {
   Typography,
   Stack,
 } from '@mui/material'
-import { useUser } from '../context/user/useUser'
+import { useUser } from './context/user/useUser'
 
 type Parcel = {
   id: number

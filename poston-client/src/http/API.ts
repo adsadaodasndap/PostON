@@ -1,6 +1,6 @@
 import axios from 'axios'
 import { toast } from 'react-toastify'
-import { baseURL } from '../config'
+import { baseURL } from '../types/config'
 
 const host = axios.create({
   baseURL,

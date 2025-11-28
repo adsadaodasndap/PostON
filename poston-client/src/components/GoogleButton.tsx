@@ -1,6 +1,6 @@
 import { Google } from '@mui/icons-material'
 import { Button } from '@mui/material'
-import { googleID } from '../config'
+import { googleID } from '../types/config'
 import { useUser } from '../context/user/useUser'
 import { googleLogin } from '../http/API'
 

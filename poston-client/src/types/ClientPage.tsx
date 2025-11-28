@@ -14,143 +14,190 @@ import {
   TextField,
   Typography,
 } from '@mui/material'
-
-type DeliveryType = 'POSTAMAT' | 'BRANCH'
-
-type ParcelStatus = 'IN_BRANCH' | 'IN_POSTAMAT' | 'DELIVERED'
-
-type Parcel = {
-  id: number
-  trackNumber: string
-  title: string
-  from: string
-  to: string
-  deliveryType: DeliveryType
-  status: ParcelStatus
-  postamatName?: string
-  cellNumber?: string
-  canRate: boolean
-}
+import { Purchase } from './types'
 
 type RatingState = {
-  courierRating: number | null
-  postamatRating: number | null
-  productRating: number | null
-  comment: string
+  pointsProduct: number | null
+  pointsDelivery: number | null
+  content: string
 }
 
-const initialParcels: Parcel[] = [
+const mockClientPurchases: Purchase[] = [
   {
     id: 1,
-    trackNumber: 'PO-0001',
-    title: 'Кроссовки Nike',
-    from: 'Алматы, склад №1',
-    to: 'Оскемен, отделение №3',
-    deliveryType: 'POSTAMAT',
-    status: 'IN_POSTAMAT',
-    postamatName: 'Постамат ТЦ «Mega»',
-    cellNumber: 'A12',
-    canRate: false,
+    user_id: 1,
+    product_id: 1,
+    date_buy: '2025-10-01T12:00:00Z',
+    date_send: '2025-10-02T10:00:00Z',
+    delivery_type: 'POSTOMAT',
+    postomat_id: 1,
+    postomat_slot: 1,
+    product: {
+      id: 1,
+      name: 'Кроссовки',
+      cost: 45000,
+      length: 30,
+      width: 20,
+      height: 12,
+      weight: 0.8,
+    },
+    postomat: { id: 1, adress: 'Постамат ТЦ «Mega»', lat: 49.97, lon: 82.61 },
+    slot: { id: 1, postomat_id: 1, width: 35, height: 20, length: 40 },
+    review: undefined,
   },
   {
     id: 2,
-    trackNumber: 'PO-0002',
-    title: 'Наушники',
-    from: 'Алматы, склад №2',
-    to: 'Оскемен, касса №5',
-    deliveryType: 'BRANCH',
-    status: 'IN_BRANCH',
-    canRate: false,
+    user_id: 1,
+    product_id: 2,
+    date_buy: '2025-10-05T14:00:00Z',
+    date_send: '2025-10-06T09:00:00Z',
+    date_receive: '2025-10-07T18:30:00Z',
+    delivery_type: 'BRANCH',
+    branch_id: 1,
+    product: {
+      id: 2,
+      name: 'Наушники',
+      cost: 25000,
+      length: 15,
+      width: 15,
+      height: 10,
+      weight: 0.3,
+    },
+    branch: { id: 1, adress: 'Отделение №3, Оскемен', post_rating: 5 },
+    review: {
+      id: 1,
+      purchase_id: 2,
+      points_product: 5,
+      points_delivery: 4,
+      content: 'Все отлично, только немного задержали выдачу',
+    },
   },
   {
     id: 3,
-    trackNumber: 'PO-0003',
-    title: 'Футболка',
-    from: 'Астана',
-    to: 'Оскемен, постамат возле ВКТУ',
-    deliveryType: 'POSTAMAT',
-    status: 'DELIVERED',
-    postamatName: 'Постамат «ВКТУ»',
-    cellNumber: 'C03',
-    canRate: true,
+    user_id: 1,
+    product_id: 3,
+    date_buy: '2025-10-10T09:00:00Z',
+    date_send: '2025-10-10T16:00:00Z',
+    date_receive: '2025-10-11T13:15:00Z',
+    delivery_type: 'POSTOMAT',
+    postomat_id: 2,
+    postomat_slot: 3,
+    product: {
+      id: 3,
+      name: 'Футболка',
+      cost: 8000,
+      length: 25,
+      width: 20,
+      height: 3,
+      weight: 0.2,
+    },
+    postomat: { id: 2, adress: 'Постамат возле ВКТУ', lat: 49.96, lon: 82.61 },
+    slot: { id: 3, postomat_id: 2, width: 35, height: 20, length: 40 },
+    review: undefined,
   },
 ]
 
+function formatDeliveryType(type: Purchase['delivery_type']) {
+  if (type === 'POSTOMAT') return 'Получение в постамате'
+  if (type === 'BRANCH') return 'Получение в отделении на кассе'
+  return 'Доставка курьером'
+}
+
+function isDelivered(p: Purchase) {
+  return Boolean(p.date_receive)
+}
+
 export default function ClientPage() {
-  const [parcels, setParcels] = React.useState<Parcel[]>(initialParcels)
+  const [purchases, setPurchases] =
+    React.useState<Purchase[]>(mockClientPurchases)
   const [ratingDialogOpen, setRatingDialogOpen] = React.useState(false)
-  const [selectedParcel, setSelectedParcel] = React.useState<Parcel | null>(
-    null
-  )
+  const [selectedPurchaseId, setSelectedPurchaseId] = React.useState<
+    number | null
+  >(null)
   const [rating, setRating] = React.useState<RatingState>({
-    courierRating: null,
-    postamatRating: null,
-    productRating: null,
-    comment: '',
+    pointsProduct: null,
+    pointsDelivery: null,
+    content: '',
   })
 
-  const openRatingDialog = (parcel: Parcel) => {
-    setSelectedParcel(parcel)
+  const activePurchases = purchases.filter((p) => !isDelivered(p))
+  const deliveredPurchases = purchases.filter((p) => isDelivered(p))
+
+  const selectedPurchase = selectedPurchaseId
+    ? (purchases.find((p) => p.id === selectedPurchaseId) ?? null)
+    : null
+
+  const handleMarkAsReceived = (purchaseId: number) => {
+    const now = new Date().toISOString()
+    setPurchases((prev) =>
+      prev.map((p) =>
+        p.id === purchaseId
+          ? {
+              ...p,
+              date_receive: now,
+            }
+          : p
+      )
+    )
+    setSelectedPurchaseId(purchaseId)
     setRating({
-      courierRating: null,
-      postamatRating: null,
-      productRating: null,
-      comment: '',
+      pointsProduct: null,
+      pointsDelivery: null,
+      content: '',
     })
     setRatingDialogOpen(true)
   }
 
-  const closeRatingDialog = () => {
-    setRatingDialogOpen(false)
-    setSelectedParcel(null)
-  }
-
-  const markAsPickedUp = (parcelId: number) => {
-    setParcels((prev) =>
-      prev.map((p) =>
-        p.id === parcelId
-          ? {
-              ...p,
-              status: 'DELIVERED',
-              canRate: true,
-            }
-          : p
-      )
-    )
-
-    const parcel = parcels.find((p) => p.id === parcelId)
-    if (parcel) {
-      openRatingDialog({
-        ...parcel,
-        status: 'DELIVERED',
-        canRate: true,
+  const handleOpenRating = (purchaseId: number) => {
+    const purchase = purchases.find((p) => p.id === purchaseId)
+    setSelectedPurchaseId(purchaseId)
+    if (purchase && purchase.review) {
+      setRating({
+        pointsProduct: purchase.review.points_product,
+        pointsDelivery: purchase.review.points_delivery,
+        content: purchase.review.content,
+      })
+    } else {
+      setRating({
+        pointsProduct: null,
+        pointsDelivery: null,
+        content: '',
       })
     }
+    setRatingDialogOpen(true)
   }
 
-  const submitRating = () => {
-    if (!selectedParcel) return
+  const handleCloseDialog = () => {
+    setRatingDialogOpen(false)
+    setSelectedPurchaseId(null)
+  }
 
-    console.log('Сохраняем оценку для посылки', selectedParcel.id, rating)
+  const handleSubmitRating = () => {
+    if (!selectedPurchase) return
+    if (!rating.pointsProduct || !rating.pointsDelivery) return
 
-    setParcels((prev) =>
+    const newReviewId = Date.now()
+    const newReview = {
+      id: newReviewId,
+      purchase_id: selectedPurchase.id,
+      points_product: rating.pointsProduct,
+      points_delivery: rating.pointsDelivery,
+      content: rating.content,
+    }
+
+    setPurchases((prev) =>
       prev.map((p) =>
-        p.id === selectedParcel.id
+        p.id === selectedPurchase.id
           ? {
               ...p,
-              canRate: false,
+              review: newReview,
             }
           : p
       )
     )
-
-    closeRatingDialog()
+    setRatingDialogOpen(false)
+    setSelectedPurchaseId(null)
   }
-
-  const activeParcels = parcels.filter(
-    (p) => p.status === 'IN_BRANCH' || p.status === 'IN_POSTAMAT'
-  )
-  const deliveredParcels = parcels.filter((p) => p.status === 'DELIVERED')
 
   return (
     <Box
@@ -176,20 +223,23 @@ export default function ClientPage() {
           Интерфейс пользователя
         </Typography>
         <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
-          Здесь пользователь видит свои посылки, может забрать их на кассе или в
-          постамате, а после получения — оценить курьера, постамат и товар.
+          Здесь пользователь видит свои покупки и может оценить товар и доставку
+          после получения.
         </Typography>
 
         <Typography variant="h6" sx={{ mb: 1.5 }}>
           Активные посылки
         </Typography>
-        {activeParcels.length === 0 ? (
+
+        {activePurchases.length === 0 && (
           <Typography sx={{ mb: 2, color: 'text.secondary' }}>
-            У вас нет активных посылок.
+            Активных посылок нет.
           </Typography>
-        ) : (
+        )}
+
+        {activePurchases.length > 0 && (
           <Stack spacing={1.5} sx={{ mb: 3 }}>
-            {activeParcels.map((p) => (
+            {activePurchases.map((p) => (
               <Paper
                 key={p.id}
                 sx={{
@@ -206,32 +256,32 @@ export default function ClientPage() {
                   justifyContent="space-between"
                   alignItems="center"
                 >
-                  <Typography fontWeight={600}>{p.title}</Typography>
+                  <Typography fontWeight={600}>
+                    {p.product?.name ?? 'Товар'}
+                  </Typography>
                   <Chip
                     size="small"
-                    label={
-                      p.deliveryType === 'POSTAMAT'
-                        ? 'Получение в постамате'
-                        : 'Получение на кассе'
-                    }
+                    label={formatDeliveryType(p.delivery_type)}
                     color="primary"
                     variant="outlined"
                   />
                 </Stack>
                 <Typography variant="body2" color="text.secondary">
-                  Трек-номер: <b>{p.trackNumber}</b>
+                  Номер покупки: {p.id}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Откуда: {p.from}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Куда: {p.to}
-                </Typography>
-
-                {p.deliveryType === 'POSTAMAT' && (
+                {p.product && (
                   <Typography variant="body2" color="text.secondary">
-                    Постамат: {p.postamatName ?? '—'}, ячейка{' '}
-                    {p.cellNumber ?? '—'}
+                    Стоимость: {p.product.cost} ₸
+                  </Typography>
+                )}
+                {p.delivery_type === 'BRANCH' && p.branch && (
+                  <Typography variant="body2" color="text.secondary">
+                    Отделение: {p.branch.adress}
+                  </Typography>
+                )}
+                {p.delivery_type === 'POSTOMAT' && p.postomat && (
+                  <Typography variant="body2" color="text.secondary">
+                    Постамат: {p.postomat.adress}
                   </Typography>
                 )}
 
@@ -239,21 +289,25 @@ export default function ClientPage() {
                   <Button
                     variant="contained"
                     sx={{ bgcolor: '#6f2dbd' }}
-                    onClick={() => markAsPickedUp(p.id)}
+                    onClick={() => handleMarkAsReceived(p.id)}
                   >
                     Я забрал посылку
                   </Button>
 
-                  {p.deliveryType === 'POSTAMAT' && (
+                  {p.delivery_type === 'POSTOMAT' && (
                     <Button
                       variant="outlined"
-                      onClick={() =>
-                        alert(
-                          `Здесь в будущем можно показать QR-код пользователя или код для сканирования.\nПока просто подсказка.\n\nПостамат: ${p.postamatName}\nЯчейка: ${p.cellNumber}`
-                        )
-                      }
+                      onClick={() => {
+                        const slot = p.slot
+                          ? `ячейка ${p.slot.id}`
+                          : 'ячейка не указана'
+                        const address = p.postomat
+                          ? p.postomat.adress
+                          : 'адрес постомата не указан'
+                        alert(`Код для постамата\nАдрес: ${address}\n${slot}`)
+                      }}
                     >
-                      Показать код для постамата
+                      Код для постамата
                     </Button>
                   )}
                 </Stack>
@@ -267,13 +321,16 @@ export default function ClientPage() {
         <Typography variant="h6" sx={{ mb: 1.5 }}>
           Полученные посылки
         </Typography>
-        {deliveredParcels.length === 0 ? (
+
+        {deliveredPurchases.length === 0 && (
           <Typography sx={{ color: 'text.secondary' }}>
-            История полученных посылок появится здесь.
+            История полученных посылок появится после первой выдачи.
           </Typography>
-        ) : (
+        )}
+
+        {deliveredPurchases.length > 0 && (
           <Stack spacing={1.5}>
-            {deliveredParcels.map((p) => (
+            {deliveredPurchases.map((p) => (
               <Paper
                 key={p.id}
                 sx={{
@@ -290,114 +347,106 @@ export default function ClientPage() {
                   justifyContent="space-between"
                   alignItems="center"
                 >
-                  <Typography fontWeight={600}>{p.title}</Typography>
+                  <Typography fontWeight={600}>
+                    {p.product?.name ?? 'Товар'}
+                  </Typography>
                   <Chip
                     size="small"
-                    label="Уже получена"
+                    label="Получена"
                     color="success"
                     variant="outlined"
                   />
                 </Stack>
                 <Typography variant="body2" color="text.secondary">
-                  Трек-номер: <b>{p.trackNumber}</b>
+                  Номер покупки: {p.id}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                  Способ получения:{' '}
-                  {p.deliveryType === 'POSTAMAT'
-                    ? 'постамат'
-                    : 'на кассе отделения'}
+                  Способ: {formatDeliveryType(p.delivery_type)}
                 </Typography>
-
-                {p.canRate ? (
-                  <Button
-                    variant="outlined"
-                    sx={{ mt: 1, borderColor: '#6f2dbd', color: '#6f2dbd' }}
-                    onClick={() => openRatingDialog(p)}
-                  >
-                    Оценить курьера, постамат и товар
-                  </Button>
+                {p.review ? (
+                  <Typography variant="body2" color="text.secondary">
+                    Оценка товара: {p.review.points_product}, доставка:{' '}
+                    {p.review.points_delivery}
+                  </Typography>
                 ) : (
-                  <Typography
-                    variant="body2"
-                    sx={{ mt: 1, color: 'text.secondary' }}
-                  >
-                    Оценка для этой посылки уже сохранена.
+                  <Typography variant="body2" color="text.secondary">
+                    Для этой посылки оценка ещё не оставлена.
                   </Typography>
                 )}
+                <Button
+                  variant="outlined"
+                  sx={{ mt: 1, borderColor: '#6f2dbd', color: '#6f2dbd' }}
+                  onClick={() => handleOpenRating(p.id)}
+                >
+                  Оценить товар и доставку
+                </Button>
               </Paper>
             ))}
           </Stack>
         )}
 
-        <Dialog open={ratingDialogOpen} onClose={closeRatingDialog} fullWidth>
-          <DialogTitle>Оценка доставки</DialogTitle>
+        <Dialog open={ratingDialogOpen} onClose={handleCloseDialog} fullWidth>
+          <DialogTitle>Оценка товара и доставки</DialogTitle>
           <DialogContent sx={{ pt: 1 }}>
-            {selectedParcel && (
+            {selectedPurchase && (
               <Typography variant="body2" sx={{ mb: 1.5 }}>
-                Посылка: <b>{selectedParcel.title}</b> (
-                {selectedParcel.trackNumber})
+                Покупка №{selectedPurchase.id} (
+                {selectedPurchase.product?.name ?? 'Товар'})
               </Typography>
             )}
 
             <Stack spacing={2}>
               <Box>
                 <Typography variant="body2" sx={{ mb: 0.5 }}>
-                  Оценка курьера
-                </Typography>
-                <Rating
-                  value={rating.courierRating}
-                  onChange={(_, value) =>
-                    setRating((prev) => ({ ...prev, courierRating: value }))
-                  }
-                />
-              </Box>
-
-              {selectedParcel?.deliveryType === 'POSTAMAT' && (
-                <Box>
-                  <Typography variant="body2" sx={{ mb: 0.5 }}>
-                    Оценка постамата
-                  </Typography>
-                  <Rating
-                    value={rating.postamatRating}
-                    onChange={(_, value) =>
-                      setRating((prev) => ({ ...prev, postamatRating: value }))
-                    }
-                  />
-                </Box>
-              )}
-
-              <Box>
-                <Typography variant="body2" sx={{ mb: 0.5 }}>
                   Оценка товара
                 </Typography>
                 <Rating
-                  value={rating.productRating}
+                  value={rating.pointsProduct}
                   onChange={(_, value) =>
-                    setRating((prev) => ({ ...prev, productRating: value }))
+                    setRating((prev) => ({
+                      ...prev,
+                      pointsProduct: value,
+                    }))
                   }
                 />
               </Box>
-
+              <Box>
+                <Typography variant="body2" sx={{ mb: 0.5 }}>
+                  Оценка доставки
+                </Typography>
+                <Rating
+                  value={rating.pointsDelivery}
+                  onChange={(_, value) =>
+                    setRating((prev) => ({
+                      ...prev,
+                      pointsDelivery: value,
+                    }))
+                  }
+                />
+              </Box>
               <TextField
-                label="Комментарий к товару / доставке"
+                label="Комментарий к товару или доставке"
                 multiline
                 minRows={3}
-                value={rating.comment}
+                value={rating.content}
                 onChange={(e) =>
-                  setRating((prev) => ({ ...prev, comment: e.target.value }))
+                  setRating((prev) => ({
+                    ...prev,
+                    content: e.target.value,
+                  }))
                 }
                 fullWidth
               />
             </Stack>
           </DialogContent>
           <DialogActions>
-            <Button onClick={closeRatingDialog}>Отмена</Button>
+            <Button onClick={handleCloseDialog}>Отмена</Button>
             <Button
               variant="contained"
               sx={{ bgcolor: '#6f2dbd' }}
-              onClick={submitRating}
+              onClick={handleSubmitRating}
             >
-              Сохранить оценку
+              Сохранить
             </Button>
           </DialogActions>
         </Dialog>

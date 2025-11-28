@@ -7,11 +7,20 @@ import App from './App'
 import Login from './Login'
 import Register from './Register'
 import './i18n'
+import ClientPage from './ClientPage'
+import WorkerPage from './WorkerPage'
+import CourierPage from './CourierPage'
+import PostomatPage from './PostomatPage'
 
 const router = createBrowserRouter([
   { path: '/', element: <Login /> },
   { path: '/reg', element: <Register /> },
   { path: '/app', element: <App /> },
+
+  { path: '/client', element: <ClientPage /> },
+  { path: '/worker', element: <WorkerPage /> },
+  { path: '/courier', element: <CourierPage /> },
+  { path: '/postomat', element: <PostomatPage /> },
 ])
 
 const theme = createTheme({

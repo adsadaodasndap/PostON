@@ -17,6 +17,9 @@ const cfg = {
   SECRET_KEY: e.SECRET_KEY || '123456789',
   GOOGLE_CLIENT_ID: e.GOOGLE_CLIENT_ID || 'your-google-client-id',
   PORT: Number(e.PORT) || 3500,
+  GOOGLE_USER: e.GOOGLE_USER || 'me@gmail.com',
+  TG_KEY: e.TG_KEY || 'xxxxxxxxxxxxxxxxxxxxxxxx',
+  GOOGLE_APP_PASSWORD: e.GOOGLE_APP_PASSWORD || 'xxxx xxxx xxxx xxxx',
 }
 
 export default cfg

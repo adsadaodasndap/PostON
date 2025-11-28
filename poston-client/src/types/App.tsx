@@ -9,6 +9,7 @@ import {
   Typography,
   Stack,
 } from '@mui/material'
+import { useUser } from '../context/user/useUser'
 
 type Parcel = {
   id: number
@@ -17,14 +18,8 @@ type Parcel = {
   status: 'в отделении' | 'забрана'
 }
 
-const App = () => {
-  useEffect(() => {
-    const sio = io('http://192.168.100.1/',a1~)
-  }
-)
-}
-
 export default function App() {
+  const { sio } = useUser()
   const [parcels, setParcels] = React.useState<Parcel[]>([
     { id: 1, title: 'Post#1', from: 'Post#1', status: 'в отделении' },
     { id: 2, title: 'Документы', from: 'KZ Courier', status: 'в отделении' },

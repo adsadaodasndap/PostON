@@ -5,13 +5,17 @@ import http from 'http'
 import fileUpload from 'express-fileupload'
 
 import cfg from './config.js'
-import router from './routes/index.js'
-import { sio_chat } from './controllers/sioControllers.js'
+import router from './routes/.'
 import sequelize from './db/db.js'
+import { sio_middleware, sio_chat } from './modules/sio/.'
+import bot from './modules/telegram/.'
+import './modules/cron/.'
 
 const PORT = cfg.PORT
 
 const app = express()
+
+bot.launch()
 
 app.use(
   cors({
@@ -29,6 +33,7 @@ app.use(
 app.use('/f', express.static('static'))
 
 app.use('/', router)
+
 app.get('/', (req, res) => {
   res.send({ msg: `check on port ${PORT}!` })
 })
@@ -42,7 +47,7 @@ app.use(function (req, res, next) {
 })
 
 const server = http.createServer(app)
-const io = new Server(server, {
+export const io = new Server(server, {
   cors: {
     origin: '*',
     methods: ['GET', 'POST'],
@@ -51,7 +56,7 @@ const io = new Server(server, {
   transports: ['websocket'],
 })
 
-//io.use(sio_middleware)
+io.use(sio_middleware)
 
 io.on('connection', sio_chat)
 
@@ -59,9 +64,8 @@ const start = async () => {
   try {
     await sequelize.authenticate()
     await sequelize.sync({
-      //alter: true,
+      alter: true,
     })
-
     server.listen(PORT, () => console.log(`Server started on port ${PORT}`))
   } catch (e) {
     console.log(e)

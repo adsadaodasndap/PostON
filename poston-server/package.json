@@ -26,6 +26,8 @@
     "leaflet-draw": "^1.0.4",
     "leaflet-geosearch": "^4.2.2",
     "lodash": "^4.17.21",
+    "node-cron": "^4.2.1",
+    "nodemailer": "^7.0.10",
     "openai": "^5.23.1",
     "pg": "^8.16.3",
     "react-leaflet": "^5.0.0",

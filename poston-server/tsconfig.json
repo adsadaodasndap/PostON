@@ -12,7 +12,7 @@
     "forceConsistentCasingInFileNames": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "strictPopertyInitialization": false,
+    "strictPropertyInitialization": false,
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules"]

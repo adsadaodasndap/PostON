@@ -6,17 +6,16 @@ import './index.css'
 import App from './App'
 import Login from './Login'
 import Register from './Register'
-import './i18n'
 import ClientPage from './ClientPage'
 import WorkerPage from './WorkerPage'
 import CourierPage from './CourierPage'
 import PostomatPage from './PostomatPage'
+import './i18n'
 
 const router = createBrowserRouter([
   { path: '/', element: <Login /> },
   { path: '/reg', element: <Register /> },
   { path: '/app', element: <App /> },
-
   { path: '/client', element: <ClientPage /> },
   { path: '/worker', element: <WorkerPage /> },
   { path: '/courier', element: <CourierPage /> },
@@ -25,6 +24,7 @@ const router = createBrowserRouter([
 
 const theme = createTheme({
   palette: {
+    mode: 'light',
     primary: { main: '#6f2dbd' },
     background: { default: '#f7f7f9' },
   },

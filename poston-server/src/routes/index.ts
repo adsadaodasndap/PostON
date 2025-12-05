@@ -11,6 +11,7 @@ import accessLevel from '../middleware/accessLevel'
 const router = Router()
 
 router.use('/auth', authRouter)
+// Доступ к маршрутам ниже только для авторизованных пользователей всех ролей
 router.use(
   '/user',
   accessLevel(['ADMIN', 'SELLER', 'BUYER', 'COURIER']),

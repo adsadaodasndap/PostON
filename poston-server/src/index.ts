@@ -13,6 +13,7 @@ import './modules/cron'
 const PORT = cfg.PORT
 const app = express()
 
+// Запуск Telegram-бота
 bot.launch()
 
 app.use(cors({ origin: '*' }))
@@ -32,6 +33,7 @@ app.use((req, res, next) => {
   next()
 })
 
+// HTTP и WebSocket сервер
 const server = http.createServer(app)
 export const io = new Server(server, {
   cors: { origin: '*', methods: ['GET', 'POST'] },
@@ -39,9 +41,11 @@ export const io = new Server(server, {
   transports: ['websocket'],
 })
 
+// Socket.io middleware и обработчик
 io.use(sio_middleware)
 io.on('connection', sio_chat)
 
+// Запуск приложения
 const start = async () => {
   try {
     await sequelize.authenticate()

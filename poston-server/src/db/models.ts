@@ -177,6 +177,7 @@ interface ProductCreationAttributes {
   width: number
   height: number
   weight: number
+  // seller_id could be included if linking product to seller
 }
 
 @Table({ timestamps: true })
@@ -209,6 +210,9 @@ export class Product extends Model<Product, ProductCreationAttributes> {
   @AllowNull(false)
   @Column(DataType.FLOAT)
   declare weight: number
+
+  // if linking to seller:
+  // @ForeignKey(() => User) @Column(DataType.INTEGER) declare seller_id: number
 
   @HasMany(() => Purchase)
   declare purchases: Purchase[]
@@ -332,4 +336,5 @@ export class Purchase extends Model<Purchase, PurchaseCreationAttributes> {
   declare review: Review
 }
 
+// Register all models with Sequelize
 sequelize.addModels([User, Branch, Postomat, Slot, Product, Review, Purchase])

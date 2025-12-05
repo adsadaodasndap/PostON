@@ -1,124 +1,70 @@
-import * as React from 'react'
-import {
-  AppBar,
-  Box,
-  Button,
-  CssBaseline,
-  Paper,
-  Toolbar,
-  Typography,
-  Stack,
-} from '@mui/material'
-import { useUser } from './context/user/useUser'
+import React, { useContext } from 'react'
+import { Routes, Route, Navigate } from 'react-router-dom'
+import { AuthContext } from './context/AuthContext'
+import NavBar from './components/NavBar'
+import LoginPage from './pages/LoginPage'
+import RegisterPage from './pages/RegisterPage'
+import ProductsPage from './pages/ProductsPage'
+import OrdersPage from './pages/OrdersPage'
+import ProfilePage from './pages/ProfilePage'
+import AssistantPage from './pages/AssistantPage'
 
-type Parcel = {
-  id: number
-  title: string
-  from: string
-  status: 'в отделении' | 'забрана'
-}
-
-export default function App() {
-  const { sio } = useUser()
-  const [parcels, setParcels] = React.useState<Parcel[]>([
-    { id: 1, title: 'Post#1', from: 'Post#1', status: 'в отделении' },
-    { id: 2, title: 'Документы', from: 'KZ Courier', status: 'в отделении' },
-    { id: 3, title: 'Подарок', from: 'Ильяс', status: 'забрана' },
-  ])
-
-  const pickup = (id: number) => {
-    setParcels((list) =>
-      list.map((p) => (p.id === id ? { ...p, status: 'забрана' } : p))
-    )
-  }
+const App: React.FC = () => {
+  const { user } = useContext(AuthContext)
 
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        minHeight: '100vh',
-        bgcolor: '#f7f7f9',
-      }}
-    >
-      <CssBaseline />
-      <AppBar position="static" sx={{ bgcolor: '#6f2dbd' }}>
-        <Toolbar>
-          <Typography variant="h6" sx={{ flexGrow: 1, textAlign: 'center' }}>
-            PostON — мои посылки
-          </Typography>
-        </Toolbar>
-      </AppBar>
-
-      <Box
-        sx={{
-          flex: 1,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          p: 3,
-        }}
-      >
-        <Paper
-          sx={{
-            p: 4,
-            width: '100%',
-            maxWidth: 600,
-            textAlign: 'center',
-            borderRadius: 4,
-            boxShadow: 6,
-          }}
-        >
-          <Typography variant="h5" sx={{ mb: 3 }}>
-            Ваши посылки
-          </Typography>
-
-          <Stack spacing={2}>
-            {parcels.map((p) => (
-              <Paper
-                key={p.id}
-                elevation={3}
-                sx={{
-                  p: 2,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  borderLeft:
-                    p.status === 'забрана'
-                      ? '5px solid green'
-                      : '5px solid #6f2dbd',
-                }}
-              >
-                <Box sx={{ textAlign: 'left' }}>
-                  <Typography variant="h6">{p.title}</Typography>
-                  <Typography sx={{ color: '#555', fontSize: 14 }}>
-                    Отправитель: {p.from}
-                  </Typography>
-                  <Typography
-                    sx={{
-                      mt: 0.5,
-                      color: p.status === 'забрана' ? 'green' : '#6f2dbd',
-                      fontWeight: 600,
-                      fontSize: 14,
-                    }}
-                  >
-                    Статус: {p.status}
-                  </Typography>
-                </Box>
-                {p.status !== 'забрана' && (
-                  <Button
-                    variant="contained"
-                    sx={{ bgcolor: '#6f2dbd' }}
-                    onClick={() => pickup(p.id)}
-                  >
-                    Забрать
-                  </Button>
-                )}
-              </Paper>
-            ))}
-          </Stack>
-        </Paper>
-      </Box>
-    </Box>
+    <div>
+      <NavBar />
+      <div style={{ padding: '1rem' }}>
+        <Routes>
+          <Route
+            path="/"
+            element={
+              user ? (
+                // Если пользователь залогинен, перенаправляем на соответствующую страницу
+                user.role === 'ADMIN' || user.role === 'SELLER' ? (
+                  <Navigate to="/orders" replace />
+                ) : user.role === 'COURIER' ? (
+                  <Navigate to="/orders" replace />
+                ) : (
+                  <Navigate to="/products" replace />
+                )
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
+          />
+          <Route
+            path="/login"
+            element={!user ? <LoginPage /> : <Navigate to="/" replace />}
+          />
+          <Route
+            path="/register"
+            element={!user ? <RegisterPage /> : <Navigate to="/" replace />}
+          />
+          <Route
+            path="/products"
+            element={user ? <ProductsPage /> : <Navigate to="/login" replace />}
+          />
+          <Route
+            path="/orders"
+            element={user ? <OrdersPage /> : <Navigate to="/login" replace />}
+          />
+          <Route
+            path="/profile"
+            element={user ? <ProfilePage /> : <Navigate to="/login" replace />}
+          />
+          <Route
+            path="/assistant"
+            element={
+              user ? <AssistantPage /> : <Navigate to="/login" replace />
+            }
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </div>
+    </div>
   )
 }
+
+export default App

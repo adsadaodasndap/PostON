@@ -1,7 +1,7 @@
 import { Response } from 'express'
 
 const unexpectedError = (res: Response, e: unknown) => {
-  console.log(e)
+  console.error(e)
   return res.status(500).json({ message: 'Непредвиденная ошибка!' })
 }
 

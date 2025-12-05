@@ -1,6 +1,6 @@
-import { Request as ERequest } from 'express'
+import { Request as ExpressRequest } from 'express'
 import { User } from '../db/models'
 
-export type Request = ERequest & {
-  user: User
+export type Request = ExpressRequest & {
+  user?: User
 }

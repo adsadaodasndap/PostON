@@ -1,4 +1,5 @@
-import sequelize from './db.js'
+import { Sequelize, Op } from 'sequelize'
+import sequelize from './db'
 import {
   AutoIncrement,
   Column,
@@ -94,12 +95,13 @@ export class Branch extends Model<Branch, BranchCreationAttributes> {
   declare post_rating: number
 
   @AllowNull(false)
-  @Column(DataType.STRING(15))
+  @Column(DataType.STRING(100))
   declare adress: string
 
   @HasMany(() => Purchase)
   declare purchases: Purchase[]
 }
+
 interface PostomatCreationAttributes {
   adress: string
   lat?: number
@@ -114,7 +116,7 @@ export class Postomat extends Model<Postomat, PostomatCreationAttributes> {
   declare id: number
 
   @AllowNull(false)
-  @Column(DataType.STRING)
+  @Column(DataType.STRING(100))
   declare adress: string
 
   @Column(DataType.DECIMAL(9, 6))
@@ -175,6 +177,7 @@ interface ProductCreationAttributes {
   width: number
   height: number
   weight: number
+  // seller_id could be included if linking product to seller
 }
 
 @Table({ timestamps: true })
@@ -207,6 +210,9 @@ export class Product extends Model<Product, ProductCreationAttributes> {
   @AllowNull(false)
   @Column(DataType.FLOAT)
   declare weight: number
+
+  // if linking to seller:
+  // @ForeignKey(() => User) @Column(DataType.INTEGER) declare seller_id: number
 
   @HasMany(() => Purchase)
   declare purchases: Purchase[]
@@ -246,6 +252,7 @@ export class Review extends Model<Review, ReviewCreationAttributes> {
   @BelongsTo(() => Purchase)
   declare purchase: Purchase
 }
+
 export type DeliveryType = 'BRANCH' | 'POSTOMAT' | 'COURIER'
 
 interface PurchaseCreationAttributes {
@@ -329,4 +336,5 @@ export class Purchase extends Model<Purchase, PurchaseCreationAttributes> {
   declare review: Review
 }
 
+// Register all models with Sequelize
 sequelize.addModels([User, Branch, Postomat, Slot, Product, Review, Purchase])

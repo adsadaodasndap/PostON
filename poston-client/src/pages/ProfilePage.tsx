@@ -1,108 +1,28 @@
 import React, { useContext, useState } from 'react'
 import { AuthContext } from '../context/AuthContext'
+import { bindTg, confirmEmail, sendEmail, sendTg } from '../http/API'
 
 const ProfilePage: React.FC = () => {
-  const { user, token, logout } = useContext(AuthContext)
+  const { user, logout } = useContext(AuthContext)
   const [code, setCode] = useState('')
   const [tgId, setTgId] = useState('')
-  const [statusMsg, setStatusMsg] = useState<string | null>(null)
 
   if (!user) return null
 
-  const handleSendEmail = async () => {
-    setStatusMsg(null)
-    try {
-      const res = await fetch(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:3500'}/user/email`,
-        {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      )
-      const data = await res.json()
-      if (res.ok) {
-        setStatusMsg(data.message)
-      } else {
-        throw new Error(data.message)
-      }
-    } catch (e: any) {
-      setStatusMsg(e.message)
-    }
+  const handleSendEmail = () => {
+    sendEmail()
   }
 
-  const handleConfirmEmail = async () => {
-    setStatusMsg(null)
-    try {
-      const res = await fetch(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:3500'}/user/conf_email`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ secret: code }),
-        }
-      )
-      const data = await res.json()
-      if (res.ok) {
-        setStatusMsg(data.message)
-      } else {
-        throw new Error(data.message)
-      }
-    } catch (e: any) {
-      setStatusMsg(e.message)
-    }
+  const handleConfirmEmail = () => {
+    confirmEmail(code)
   }
 
-  const handleBindTelegram = async () => {
-    setStatusMsg(null)
-    try {
-      const res = await fetch(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:3500'}/user/bind_tg`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ tg_id: tgId }),
-        }
-      )
-      const data = await res.json()
-      if (res.ok) {
-        setStatusMsg(data.message)
-      } else {
-        throw new Error(data.message)
-      }
-    } catch (e: any) {
-      setStatusMsg(e.message)
-    }
+  const handleBindTelegram = () => {
+    bindTg(tgId)
   }
 
-  const handleSendTestMessage = async () => {
-    setStatusMsg(null)
-    try {
-      const res = await fetch(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:3500'}/user/send_tg`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ message: 'Тестовое сообщение' }),
-        }
-      )
-      const data = await res.json()
-      if (res.ok) {
-        setStatusMsg('Тестовое сообщение отправлено в Telegram')
-      } else {
-        throw new Error(data.message)
-      }
-    } catch (e: any) {
-      setStatusMsg(e.message)
-    }
+  const handleSendTestMessage = () => {
+    sendTg('Тестовое сообщение')
   }
 
   return (
@@ -163,7 +83,7 @@ const ProfilePage: React.FC = () => {
           </button>
         )}
       </div>
-      {statusMsg && <p style={{ color: 'green' }}>{statusMsg}</p>}
+      {/* {statusMsg && <p style={{ color: 'green' }}>{statusMsg}</p>} */}
       <button onClick={() => logout()}>Выйти из аккаунта</button>
     </div>
   )

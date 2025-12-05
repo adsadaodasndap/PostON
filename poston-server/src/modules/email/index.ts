@@ -1,17 +1,6 @@
 import nodemailer from 'nodemailer'
 import cfg from '../../config'
 
-// Если у вас своя почта на сервере
-// const mailTransportConfig = {
-//   host: 'localhost',
-//   port: 25,
-//   secure: false,
-//   tls: {
-//     rejectUnauthorized: false,
-//   },
-// }
-
-// Через Gmail
 const transport = nodemailer.createTransport({
   service: 'gmail',
   auth: {

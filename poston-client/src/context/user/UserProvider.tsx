@@ -7,7 +7,7 @@ import { UserContext } from './UserContext'
 
 export interface UserData {
   user_id: number
-  role: 'ADMIN' | 'SELLER' | 'BUYER' | null
+  role: 'ADMIN' | 'SELLER' | 'BUYER' | 'COURIER' | null
   firstName: string
   lastName: string
   email: string

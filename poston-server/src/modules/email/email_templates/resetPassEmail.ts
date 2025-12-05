@@ -220,5 +220,4 @@ const generateResetPassEmail = (data: any) => `<!DOCTYPE html>
 </html>
 `
 
-
 export default generateResetPassEmail

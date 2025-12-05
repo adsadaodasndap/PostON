@@ -3,14 +3,16 @@ import express from 'express'
 import { Server } from 'socket.io'
 import http from 'http'
 import fileUpload from 'express-fileupload'
-import cfg from './config'
-import router from './routes'
-import sequelize from './db/db'
-import { sio_middleware, sio_chat } from './modules/sio'
-import bot from './modules/telegram'
-import './modules/cron'
+
+import cfg from './config.js'
+import router from './routes/index.js'
+import sequelize from './db/db.js'
+import { sio_middleware, sio_chat } from './modules/sio/index.js'
+import bot from './modules/telegram/index.js'
+import './modules/cron/index.js'
 
 const PORT = cfg.PORT
+
 const app = express()
 
 bot.launch()
@@ -19,10 +21,13 @@ app.use(cors({ origin: '*' }))
 app.use(express.json({ limit: '2mb' }))
 app.use(fileUpload({ limits: { fileSize: 50 * 1024 * 1024 } }))
 app.use('/f', express.static('static'))
+
 app.use('/', router)
+
 app.get('/', (req, res) => {
-  res.send({ msg: `Server works on port ${PORT}` })
+  res.send({ msg: `check on port ${PORT}!` })
 })
+
 app.use((req, res, next) => {
   res.header('Access-Control-Allow-Origin', '*')
   res.header(
@@ -48,9 +53,8 @@ const start = async () => {
     await sequelize.sync({ alter: true })
     server.listen(PORT, () => console.log(`Server started on port ${PORT}`))
   } catch (e) {
-    console.error('Failed to start server:', e)
+    console.log(e)
   }
 }
-start()
 
-sdfdssfsd
+start()

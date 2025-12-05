@@ -4,13 +4,13 @@ import {
   signUp,
   getUsers,
   googleAuth,
-} from '../controllers/authController'
-import accessLevel from '../middleware/accessLevel'
+} from '../controllers/authController.js'
 
 const router = Router()
+
 router.post('/signin', signIn)
 router.post('/signup', signUp)
+router.get('/users', getUsers)
 router.post('/google', googleAuth)
-router.get('/users', accessLevel(['ADMIN']), getUsers)
 
 export default router

@@ -1,0 +1,21 @@
+{
+  "title": {
+    "one": "Бір",
+    "two": "Екі",
+    "three": "Үш"
+  },
+  "subtitle": "Аяқталды!",
+  "imputation": "Сіздің email: {{email}}, TG ID: {{id}}",
+  "imputation2": "Деректер: {{user.id}}, {{user.firstName}}",
+  "hello": "Сәлем1",
+  "trans": {
+    "title": "Тіл"
+  },
+  "current_lang": "Қазақ",
+  "lang_ru": "Русский / Орыс",
+  "lang_kz": "Қазақ",
+  "lang_en": "English / Ағылшын",
+  "good": {
+    "evening": "Қайырлы кеш!"
+  }
+}

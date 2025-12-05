@@ -1,5 +1,4 @@
-import { Sequelize, Op } from 'sequelize'
-import sequelize from './db'
+import sequelize from './db.js'
 import {
   AutoIncrement,
   Column,
@@ -95,7 +94,7 @@ export class Branch extends Model<Branch, BranchCreationAttributes> {
   declare post_rating: number
 
   @AllowNull(false)
-  @Column(DataType.STRING(100))
+  @Column(DataType.STRING(15))
   declare adress: string
 
   @HasMany(() => Purchase)
@@ -116,7 +115,7 @@ export class Postomat extends Model<Postomat, PostomatCreationAttributes> {
   declare id: number
 
   @AllowNull(false)
-  @Column(DataType.STRING(100))
+  @Column(DataType.STRING)
   declare adress: string
 
   @Column(DataType.DECIMAL(9, 6))

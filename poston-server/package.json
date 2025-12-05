@@ -5,8 +5,10 @@
   "main": "./src/index.ts",
   "type": "module",
   "scripts": {
-    "dev": "tsx --env-file=.env --watch  src/index.ts",
-    "start": "node dist/index.js",
+    "dev": "tsx --env-file=.env --watch src/index.ts",
+    "start": "tsx --env-file=.env.production src/index.ts",
+    "sync": "node sync.js",
+    "preview": "node dist/index.js",
     "build": "tsc"
   },
   "keywords": [],

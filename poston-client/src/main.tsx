@@ -1,4 +1,3 @@
-import React from 'react'
 import { createRoot } from 'react-dom/client'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
 import { createTheme, CssBaseline, ThemeProvider } from '@mui/material'
@@ -15,6 +14,7 @@ import WithAuth from './components/WithAuth'
 import RootLayout from './components/RootLayout'
 import NotFound from './pages/NotFound'
 import { ToastContainer } from 'react-toastify'
+import ProfilePage from './pages/ProfilePage'
 
 const router = createBrowserRouter([
   {
@@ -28,6 +28,12 @@ const router = createBrowserRouter([
       {
         path: '/app',
         element: <WithAuth c={<App />} roles={['BUYER', 'SELLER', 'ADMIN']} />,
+      },
+      {
+        path: '/client',
+        element: (
+          <WithAuth c={<ProfilePage />} roles={['BUYER', 'SELLER', 'ADMIN']} />
+        ),
       },
       {
         path: '/client',

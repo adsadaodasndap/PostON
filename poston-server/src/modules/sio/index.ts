@@ -1,4 +1,4 @@
-import { sio_middleware } from './sioMiddleware'
-import { sio_chat } from './sioControllers'
+import { sio_chat } from './sioControllers.js'
+import { sio_middleware } from './sioMiddleware.js'
 
-export { sio_middleware, sio_chat }
+export { sio_chat, sio_middleware }

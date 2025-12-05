@@ -1,8 +1,8 @@
-import React, { useState, useContext } from 'react'
-import { AuthContext } from '../context/AuthContext'
+import { Box, Button, Typography } from '@mui/material'
+import React, { useState } from 'react'
+import { askAssistant } from '../http/API'
 
 const AssistantPage: React.FC = () => {
-  const { token } = useContext(AuthContext)
   const [question, setQuestion] = useState('')
   const [answer, setAnswer] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -16,35 +16,23 @@ const AssistantPage: React.FC = () => {
       return
     }
     setLoading(true)
-    try {
-      const res = await fetch(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:3500'}/assistant/ask`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ question }),
-        }
-      )
-      const data = await res.json()
-      if (!res.ok) {
-        throw new Error(data.message || 'Ошибка обращения к ассистенту')
-      }
-      setAnswer(data.answer)
-    } catch (e: any) {
-      setError(e.message)
-    } finally {
+    const data = await askAssistant(question)
+    if (!data) {
+      setError('Ошибка при получении ответа')
       setLoading(false)
+      return
     }
+    setAnswer(data)
+    setLoading(false)
   }
 
   return (
     <div>
-      <h2>AI Ассистент</h2>
-      <p>Задайте вопрос, и искусственный интеллект ответит на него.</p>
-      <div>
+      <Typography variant="h2">AI Ассистент</Typography>
+      <Typography>
+        Задайте вопрос, и искусственный интеллект ответит на него.
+      </Typography>
+      <Box>
         <textarea
           rows={4}
           cols={50}
@@ -52,14 +40,14 @@ const AssistantPage: React.FC = () => {
           onChange={(e) => setQuestion(e.target.value)}
           placeholder="Ваш вопрос..."
         />
-      </div>
-      <button
+      </Box>
+      <Button
         onClick={askQuestion}
         disabled={loading}
         style={{ marginTop: '5px' }}
       >
         {loading ? 'Запрос...' : 'Спросить'}
-      </button>
+      </Button>
       {error && <p style={{ color: 'red' }}>{error}</p>}
       {answer && (
         <div style={{ marginTop: '1rem', whiteSpace: 'pre-wrap' }}>

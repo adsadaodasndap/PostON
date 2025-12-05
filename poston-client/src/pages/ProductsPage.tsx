@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useState } from 'react'
 import { AuthContext } from '../context/AuthContext'
+import { createProduct, deleteProduct, getProducts } from '../http/API'
 
 interface Product {
   id: number
@@ -12,7 +13,7 @@ interface Product {
 }
 
 const ProductsPage: React.FC = () => {
-  const { user, token } = useContext(AuthContext)
+  const { user } = useContext(AuthContext)
   const [products, setProducts] = useState<Product[]>([])
   const [newProduct, setNewProduct] = useState({
     name: '',
@@ -25,17 +26,8 @@ const ProductsPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null)
 
   const fetchProducts = async () => {
-    try {
-      const res = await fetch(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:3500'}/products`
-      )
-      const data = await res.json()
-      if (res.ok) {
-        setProducts(data.products || [])
-      }
-    } catch (e) {
-      console.error('Failed to fetch products')
-    }
+    const products = await getProducts()
+    setProducts(products)
   }
 
   useEffect(() => {
@@ -55,62 +47,28 @@ const ProductsPage: React.FC = () => {
       setError('Заполните все поля для добавления товара')
       return
     }
-    try {
-      const res = await fetch(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:3500'}/products`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            name: newProduct.name,
-            cost: parseFloat(newProduct.cost),
-            length: parseFloat(newProduct.length),
-            width: parseFloat(newProduct.width),
-            height: parseFloat(newProduct.height),
-            weight: parseFloat(newProduct.weight),
-          }),
-        }
-      )
-      const data = await res.json()
-      if (!res.ok) {
-        throw new Error(data.message || 'Ошибка при создании товара')
-      }
-      setProducts((prev) => [...prev, data.product])
-      setNewProduct({
-        name: '',
-        cost: '',
-        length: '',
-        width: '',
-        height: '',
-        weight: '',
-      })
-    } catch (e: any) {
-      setError(e.message)
-    }
+    createProduct(
+      newProduct.name,
+      parseFloat(newProduct.cost),
+      parseFloat(newProduct.length),
+      parseFloat(newProduct.width),
+      parseFloat(newProduct.height),
+      parseFloat(newProduct.weight)
+    )
+    fetchProducts()
+    setNewProduct({
+      name: '',
+      cost: '',
+      length: '',
+      width: '',
+      height: '',
+      weight: '',
+    })
   }
 
   const handleDeleteProduct = async (id: number) => {
-    try {
-      const res = await fetch(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:3500'}/products/${id}`,
-        {
-          method: 'DELETE',
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      )
-      const data = await res.json()
-      if (!res.ok) {
-        throw new Error(data.message || 'Ошибка при удалении товара')
-      }
-      setProducts((prev) => prev.filter((prod) => prod.id !== id))
-    } catch (e: any) {
-      alert(e.message)
-    }
+    deleteProduct(id)
+    fetchProducts()
   }
 
   const isManager = user?.role === 'ADMIN' || user?.role === 'SELLER'

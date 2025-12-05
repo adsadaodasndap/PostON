@@ -1,0 +1,21 @@
+{
+  "title": {
+    "one": "Один",
+    "two": "Два",
+    "three": "Три"
+  },
+  "subtitle": "Конец!",
+  "imputation": "Ваш email: {{email}}, TG ID: {{id}}",
+  "imputation2": "Данные: {{user.id}}, {{user.firstName}}",
+  "hello": "Привет1",
+  "trans": {
+    "title": "Язык"
+  },
+  "current_lang": "Русский",
+  "lang_ru": "Русский",
+  "lang_kz": "Қазақ / Казахский",
+  "lang_en": "English / Английский",
+  "good": {
+    "evening": "Добрый вечер!"
+  }
+}

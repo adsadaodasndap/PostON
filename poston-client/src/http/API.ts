@@ -6,11 +6,14 @@ const host = axios.create({
   baseURL,
 })
 
-const $host = axios.create({
-  baseURL,
-  headers: {
-    Authorization: `Bearer ${localStorage.token}`,
-  },
+export const $host = axios.create({ baseURL })
+
+$host.interceptors.request.use((config) => {
+  const token = localStorage.token
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
 })
 
 type ApiMessageResponse = {
@@ -104,5 +107,82 @@ export const getUsers = async (id?: string) => {
     return res.data
   } catch (error: unknown) {
     handleApiError(error)
+  }
+}
+
+export const sendEmail = async () => {
+  try {
+    const res = await $host.post('user/email')
+    toast.success(res.data.message)
+    return res.data
+  } catch (e: any) {
+    if (e.response?.data?.message) toast.error(e.response.data.message)
+    console.log(e)
+  }
+}
+
+export const confirmEmail = async (secret: string) => {
+  try {
+    const res = await $host.post('user/conf_email', { secret })
+    toast.success(res.data.message)
+    return res.data
+  } catch (e: any) {
+    if (e.response?.data?.message) toast.error(e.response.data.message)
+    console.log(e)
+  }
+}
+
+export const getProducts = async () => {
+  try {
+    const res = await $host.get('user/products')
+    return res.data
+  } catch (e: any) {
+    if (e.response?.data?.message) toast.error(e.response.data.message)
+    console.log(e)
+  }
+}
+export const deleteProduct = async (id: number) => {
+  try {
+    const res = await $host.delete('user/products', { params: { id } })
+    toast.success(res.data.message)
+    return res.data
+  } catch (e: any) {
+    if (e.response?.data?.message) toast.error(e.response.data.message)
+    console.log(e)
+  }
+}
+
+export const createProduct = async (
+  name: string,
+  cost: number,
+  length: number,
+  width: number,
+  height: number,
+  weight: number
+) => {
+  try {
+    const res = await $host.post('user/products', {
+      name,
+      cost,
+      length,
+      width,
+      height,
+      weight,
+    })
+    toast.success(res.data.message)
+    return res.data
+  } catch (e: any) {
+    if (e.response?.data?.message) toast.error(e.response.data.message)
+    console.log(e)
+  }
+}
+
+export const askAssistant = async (question: string) => {
+  try {
+    const res = await $host.post('user/assistant', { question })
+    return res.data
+  } catch (e: any) {
+    if (e.response?.data?.message) toast.error(e.response.data.message)
+    console.log(e)
   }
 }

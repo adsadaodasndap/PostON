@@ -5,9 +5,10 @@ import {
   sendConfEmail,
   sendTelegram,
   verify,
-} from '../controllers/userController'
+} from '../controllers/userController.js'
 
 const router = Router()
+
 router.post('/verify', verify)
 router.post('/email', sendConfEmail)
 router.post('/conf_email', confirmEmail)

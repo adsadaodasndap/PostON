@@ -1,16 +1,15 @@
-import React, { useContext } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
-import { AuthContext } from './context/AuthContext'
+import { Navigate, Route, Routes } from 'react-router-dom'
 import NavBar from './components/NavBar'
-import LoginPage from './pages/LoginPage'
-import RegisterPage from './pages/RegisterPage'
-import ProductsPage from './pages/ProductsPage'
-import OrdersPage from './pages/OrdersPage'
-import ProfilePage from './pages/ProfilePage'
+import { useUser } from './context/user/useUser'
 import AssistantPage from './pages/AssistantPage'
+import LoginPage from './pages/LoginPage'
+import OrdersPage from './pages/OrdersPage'
+import ProductsPage from './pages/ProductsPage'
+import ProfilePage from './pages/ProfilePage'
+import RegisterPage from './pages/RegisterPage'
 
 const App: React.FC = () => {
-  const { user } = useContext(AuthContext)
+  const { user } = useUser()
 
   return (
     <div>

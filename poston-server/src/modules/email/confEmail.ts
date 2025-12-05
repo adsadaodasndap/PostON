@@ -1,20 +1,22 @@
 import nodemailer from 'nodemailer'
-import cfg from '../../config'
+import cfg from '../../config.js'
 
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: cfg.GOOGLE_USER,
-    pass: cfg.GOOGLE_APP_PASSWORD,
-  },
-})
-
-export async function confEmail(to: string, code: string) {
+export const confEmail = async (
+  recipientEmail: string,
+  activationCode: string
+) => {
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: cfg.GOOGLE_USER,
+      pass: cfg.GOOGLE_APP_PASSWORD,
+    },
+  })
   const mailOptions = {
     from: cfg.GOOGLE_USER,
-    to,
-    subject: 'Подтверждение почты на PostON',
-    text: `Ваш код подтверждения: ${code}`,
+    to: recipientEmail,
+    subject: 'Подтверждение почты PostON',
+    text: `Ваш код подтверждения: ${activationCode}`,
   }
   await transporter.sendMail(mailOptions)
 }

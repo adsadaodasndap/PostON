@@ -10,7 +10,10 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import HomeButton from '../../../../web-course-2025/test-client-v2/src/components/HomeButton'
 import { useUser } from '../../../../web-course-2025/test-client-v2/src/context/user/useUser'
-import { bindTg, sendTg } from '../../../../web-course-2025/test-client-v2/src/http/API'
+import {
+  bindTg,
+  sendTg,
+} from '../../../../web-course-2025/test-client-v2/src/http/API'
 
 const Telegram = () => {
   const { user, sio } = useUser()
@@ -23,11 +26,11 @@ const Telegram = () => {
 
   const callNotification = (message: string) => {
     if (Notification.permission === 'granted') {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const _notif = new Notification('Новое сообщение', {
         body: message,
         icon: '/logo.png',
       })
+      console.log(_notif)
     }
   }
 

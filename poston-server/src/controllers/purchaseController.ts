@@ -1,8 +1,9 @@
-import { Request, Response } from 'express'
+import { Response } from 'express'
 import { Op } from 'sequelize'
 import { Purchase, Product, User, Branch, Postomat, Slot } from '../db/models'
 import unexpectedError from '../helpers/unexpectedError'
 import bot from '../modules/telegram'
+import { Request } from '../types/Request'
 
 export const createPurchase = async (req: Request, res: Response) => {
   try {

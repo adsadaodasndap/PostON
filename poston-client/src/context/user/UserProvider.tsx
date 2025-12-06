@@ -4,6 +4,7 @@ import { io, type Socket } from 'socket.io-client'
 import { verify } from '../../http/API'
 import { baseWSURL } from '../../config'
 import { UserContext } from './UserContext'
+import type { CartItem } from '../../types/CartItem'
 
 export interface UserData {
   user_id: number
@@ -31,7 +32,21 @@ interface UserProviderProps {
 }
 
 export const UserProvider = ({ children }: UserProviderProps) => {
+  const loadCart = () => {
+    const c = localStorage.cart
+
+    if (c) {
+      try {
+        return JSON.parse(c)
+      } catch (e) {
+        console.log(e)
+      }
+    }
+  }
   const [user, setUser] = useState<UserData>(noUser)
+  const [cart, setCart] = useState<CartItem[]>(loadCart() || [])
+  const [cartOpen, setCartOpen] = useState(false)
+
   const [sio, setSIO] = useState<Socket | null>(null)
   const navigate = useNavigate()
 
@@ -41,6 +56,10 @@ export const UserProvider = ({ children }: UserProviderProps) => {
       localStorage.token = token
     }
   }
+
+  useEffect(() => {
+    localStorage.cart = JSON.stringify(cart)
+  }, [cart])
 
   const logout = (manual: boolean = false) => {
     if (manual) {
@@ -93,7 +112,19 @@ export const UserProvider = ({ children }: UserProviderProps) => {
   }, [])
 
   return (
-    <UserContext.Provider value={{ user, login, logout, sio, setUser }}>
+    <UserContext.Provider
+      value={{
+        user,
+        login,
+        logout,
+        sio,
+        setUser,
+        cart,
+        setCart,
+        cartOpen,
+        setCartOpen,
+      }}
+    >
       {children}
     </UserContext.Provider>
   )

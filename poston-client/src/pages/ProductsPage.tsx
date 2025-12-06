@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useUser } from '../context/user/useUser'
 import { createProduct, deleteProduct, getProducts } from '../http/API'
+import { Button } from '@mui/material'
+import AddIcon from '@mui/icons-material/Add'
+import CheckIcon from '@mui/icons-material/Check'
 
 interface Product {
   id: number
@@ -13,7 +16,7 @@ interface Product {
 }
 
 const ProductsPage = () => {
-  const { user } = useUser()
+  const { user, cart, setCart } = useUser()
   const [products, setProducts] = useState<Product[]>([])
   const [newProduct, setNewProduct] = useState({
     name: '',
@@ -149,16 +152,35 @@ const ProductsPage = () => {
         {products.map((prod) => (
           <li key={prod.id} style={{ marginBottom: '0.5rem' }}>
             <strong>{prod.name}</strong> — {prod.cost} ₸
-            {isBuyer && (
-              <button
-                style={{ marginLeft: '10px' }}
-                onClick={() =>
-                  (window.location.href = `/orders?buy=${prod.id}`)
-                }
-              >
-                Купить
-              </button>
-            )}
+            {isBuyer &&
+              (cart.find((i) => i.id === prod.id) ? (
+                <Button
+                  startIcon={<CheckIcon />}
+                  variant="outlined"
+                  style={{ marginLeft: '10px' }}
+                >
+                  В корзине!
+                </Button>
+              ) : (
+                <Button
+                  startIcon={<AddIcon />}
+                  variant="contained"
+                  style={{ marginLeft: '10px' }}
+                  onClick={() =>
+                    setCart((prev) => [
+                      ...prev,
+                      {
+                        id: prod.id,
+                        name: prod.name,
+                        price: prod.cost,
+                        amount: 1,
+                      },
+                    ])
+                  }
+                >
+                  Купить
+                </Button>
+              ))}
             {isManager && (
               <button
                 style={{ marginLeft: '10px' }}

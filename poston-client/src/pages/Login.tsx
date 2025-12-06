@@ -1,24 +1,28 @@
 import { Box, Button, Paper, Stack, TextField, Typography } from '@mui/material'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { signUp } from './http/API'
-import { useState } from 'react'
-import { useUser } from './context/user/useUser'
+import { signIn } from '../http/API'
+import { useUser } from '../context/user/useUser'
 
-export default function Register() {
+export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
-  const { login } = useUser()
+  const { user, login } = useUser()
   const navigate = useNavigate()
-  const submitSignUp = async () => {
-    const res = await signUp(firstName, lastName, email, password)
+  const submitSignIn = async () => {
+    const res = await signIn(email, password)
 
     if (res.token) {
       login(res.user, res.token)
-      navigate('/app')
+      navigate('/products')
     }
   }
+
+  useEffect(() => {
+    if (user.role) {
+      navigate('/products')
+    }
+  }, [user])
 
   return (
     <Box
@@ -41,25 +45,9 @@ export default function Register() {
         }}
       >
         <Typography variant="h5" sx={{ mb: 2 }}>
-          Регистрация
+          Вход в PostON
         </Typography>
         <Stack spacing={2}>
-          <TextField
-            label="Имя"
-            variant="outlined"
-            fullWidth
-            value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
-          />
-
-          <TextField
-            label="Фамилия"
-            variant="outlined"
-            fullWidth
-            value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
-          />
-
           <TextField
             label="Email"
             type="email"
@@ -79,15 +67,16 @@ export default function Register() {
           />
 
           <Button
-            onClick={submitSignUp}
+            onClick={submitSignIn}
             fullWidth
             variant="contained"
             sx={{ bgcolor: '#6f2dbd' }}
           >
-            Зарегистрироваться
+            Войти
           </Button>
-          <Link to="/" style={{ textDecoration: 'none' }}>
-            <Button fullWidth>Войти</Button>
+
+          <Link to="/reg" style={{ textDecoration: 'none' }}>
+            <Button fullWidth>Регистрация</Button>
           </Link>
         </Stack>
       </Paper>

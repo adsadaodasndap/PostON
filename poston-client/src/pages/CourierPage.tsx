@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { Box, Button, Chip, Paper, Stack, Typography } from '@mui/material'
-import type { Purchase, User } from './types'
+import type { Purchase, User } from '../types'
 
 const currentCourier: User = {
   id: 10,

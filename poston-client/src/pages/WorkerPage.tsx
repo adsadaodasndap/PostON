@@ -9,7 +9,7 @@ import {
   Stack,
   Typography,
 } from '@mui/material'
-import type { Branch, Purchase, User } from './types'
+import type { Branch, Purchase, User } from '../types'
 
 type WorkerState = {
   branch: Branch

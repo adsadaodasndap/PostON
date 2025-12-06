@@ -1,4 +1,3 @@
-import * as React from 'react'
 import {
   Box,
   Button,
@@ -9,6 +8,7 @@ import {
   MenuItem,
   Typography,
 } from '@mui/material'
+import { useState } from 'react'
 import { toast } from 'react-toastify'
 
 type Account = {
@@ -18,9 +18,9 @@ type Account = {
 }
 
 export default function AdminPage() {
-  const [accounts, setAccounts] = React.useState<Account[]>([])
-  const [role, setRole] = React.useState('worker')
-  const [name, setName] = React.useState('')
+  const [accounts, setAccounts] = useState<Account[]>([])
+  const [role, setRole] = useState('worker')
+  const [name, setName] = useState('')
 
   const addAccount = () => {
     if (!name.trim()) {

@@ -1,21 +1,21 @@
+import { createTheme, CssBaseline, ThemeProvider } from '@mui/material'
 import { createRoot } from 'react-dom/client'
 import { createBrowserRouter, RouterProvider } from 'react-router-dom'
-import { createTheme, CssBaseline, ThemeProvider } from '@mui/material'
-import './index.css'
-import App from './App'
-import Login from './Login'
-import Register from './Register'
-import ClientPage from './ClientPage'
-import WorkerPage from './WorkerPage'
-import CourierPage from './CourierPage'
-import PostomatPage from './PostomatPage'
-import './i18n'
-import WithAuth from './components/WithAuth'
-import RootLayout from './components/RootLayout'
-import NotFound from './pages/NotFound'
 import { ToastContainer } from 'react-toastify'
-import ProfilePage from './pages/ProfilePage'
+import RootLayout from './components/RootLayout'
+import WithAuth from './components/WithAuth'
+import './i18n'
+import './index.css'
+import ClientPage from './pages/ClientPage'
+import CourierPage from './pages/CourierPage'
+import Login from './pages/Login'
+import NotFound from './pages/NotFound'
+import PostomatPage from './pages/PostomatPage'
 import ProductsPage from './pages/ProductsPage'
+import ProfilePage from './pages/ProfilePage'
+import Register from './pages/Register'
+import WorkerPage from './pages/WorkerPage'
+import AdminPage from './pages/Admin'
 
 const router = createBrowserRouter([
   {
@@ -31,11 +31,7 @@ const router = createBrowserRouter([
         element: <ProductsPage />,
       },
       {
-        path: '/app',
-        element: <WithAuth c={<App />} roles={['BUYER', 'SELLER', 'ADMIN']} />,
-      },
-      {
-        path: '/client',
+        path: '/profile',
         element: (
           <WithAuth c={<ProfilePage />} roles={['BUYER', 'SELLER', 'ADMIN']} />
         ),
@@ -48,21 +44,21 @@ const router = createBrowserRouter([
       },
       {
         path: '/worker',
-        element: (
-          <WithAuth c={<WorkerPage />} roles={['BUYER', 'SELLER', 'ADMIN']} />
-        ),
+        element: <WithAuth c={<WorkerPage />} roles={['SELLER', 'ADMIN']} />,
       },
       {
         path: '/courier',
-        element: (
-          <WithAuth c={<CourierPage />} roles={['BUYER', 'SELLER', 'ADMIN']} />
-        ),
+        element: <WithAuth c={<CourierPage />} roles={['SELLER', 'ADMIN']} />,
       },
       {
         path: '/postomat',
         element: (
           <WithAuth c={<PostomatPage />} roles={['BUYER', 'SELLER', 'ADMIN']} />
         ),
+      },
+      {
+        path: '/admin',
+        element: <WithAuth c={<AdminPage />} roles={['ADMIN']} />,
       },
       { path: '*', element: <NotFound /> },
     ],
@@ -84,6 +80,6 @@ createRoot(document.getElementById('root')!).render(
   <ThemeProvider theme={theme}>
     <CssBaseline />
     <RouterProvider router={router} />
-    <ToastContainer theme="colored" />
+    <ToastContainer theme="colored" position="bottom-left" />
   </ThemeProvider>
 )

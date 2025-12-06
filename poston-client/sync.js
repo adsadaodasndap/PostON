@@ -10,3 +10,7 @@ execSync(removeCommand, { stdio: 'inherit', shell: true })
 const scpCommand = `scp -r ./dist/* ${SERVER_USER}@${SERVER_HOST}:${DEST_FOLDER}`
 console.log('Copying new dist:', scpCommand)
 execSync(scpCommand, { stdio: 'inherit', shell: true })
+
+const chmodCommand = `ssh ${SERVER_USER}@${SERVER_HOST} "sudo chmod -R 777 ${DEST_FOLDER}"`
+console.log('Removing old dist:', chmodCommand)
+execSync(chmodCommand, { stdio: 'inherit', shell: true })

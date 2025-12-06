@@ -15,6 +15,7 @@ import RootLayout from './components/RootLayout'
 import NotFound from './pages/NotFound'
 import { ToastContainer } from 'react-toastify'
 import ProfilePage from './pages/ProfilePage'
+import ProductsPage from './pages/ProductsPage'
 
 const router = createBrowserRouter([
   {
@@ -24,6 +25,10 @@ const router = createBrowserRouter([
       {
         path: '/reg',
         element: <Register />,
+      },
+      {
+        path: '/products',
+        element: <ProductsPage />,
       },
       {
         path: '/app',

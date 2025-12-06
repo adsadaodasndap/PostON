@@ -1,27 +1,22 @@
-import React, { useState, useContext } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
-import { AuthContext } from '../context/AuthContext'
+import React, { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { useUser } from '../context/user/useUser'
+import { signUp } from '../http/API'
 
-const RegisterPage: React.FC = () => {
-  const { register } = useContext(AuthContext)
+const RegisterPage = () => {
+  const { login } = useUser()
   const navigate = useNavigate()
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError(null)
-    setLoading(true)
-    const result = await register(firstName, lastName, email, password)
-    setLoading(false)
-    if (result.success) {
-      navigate('/')
-    } else {
-      setError(result.message || 'Ошибка регистрации')
+    const res = await signUp(firstName, lastName, email, password)
+    if (res.token) {
+      login(res.user, res.token)
+      navigate('/products')
     }
   }
 
@@ -69,8 +64,7 @@ const RegisterPage: React.FC = () => {
             required
           />
         </div>
-        {error && <p style={{ color: 'red' }}>{error}</p>}
-        <button type="submit" disabled={loading} style={{ marginTop: '10px' }}>
+        <button type="submit" style={{ marginTop: '10px' }}>
           Создать аккаунт
         </button>
       </form>

@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react'
-import { AuthContext } from '../context/AuthContext'
+import { useUser } from '../context/user/useUser'
 
 interface Order {
   id: number
@@ -16,8 +16,8 @@ interface Order {
   courier_id?: number | null
 }
 
-const OrdersPage: React.FC = () => {
-  const { user, token } = useContext(AuthContext)
+const OrdersPage = () => {
+  const { user, token } = useUser()
   const [orders, setOrders] = useState<Order[]>([])
   const [couriers, setCouriers] = useState<{ id: number; name: string }[]>([])
   const [loading, setLoading] = useState(true)

@@ -1,9 +1,8 @@
-import React, { useContext } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { AuthContext } from '../context/AuthContext'
+import { useUser } from '../context/user/useUser'
 
-const NavBar: React.FC = () => {
-  const { user, logout } = useContext(AuthContext)
+const NavBar = () => {
+  const { user, logout } = useUser()
   const navigate = useNavigate()
 
   const handleLogout = () => {

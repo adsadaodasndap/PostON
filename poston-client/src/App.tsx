@@ -8,7 +8,7 @@ import ProductsPage from './pages/ProductsPage'
 import ProfilePage from './pages/ProfilePage'
 import RegisterPage from './pages/RegisterPage'
 
-const App: React.FC = () => {
+const App = () => {
   const { user } = useUser()
 
   return (

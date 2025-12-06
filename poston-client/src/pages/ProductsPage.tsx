@@ -1,5 +1,5 @@
-import React, { useContext, useEffect, useState } from 'react'
-import { AuthContext } from '../context/AuthContext'
+import { useEffect, useState } from 'react'
+import { useUser } from '../context/user/useUser'
 import { createProduct, deleteProduct, getProducts } from '../http/API'
 
 interface Product {
@@ -12,8 +12,8 @@ interface Product {
   weight: number
 }
 
-const ProductsPage: React.FC = () => {
-  const { user } = useContext(AuthContext)
+const ProductsPage = () => {
+  const { user } = useUser()
   const [products, setProducts] = useState<Product[]>([])
   const [newProduct, setNewProduct] = useState({
     name: '',
@@ -26,8 +26,8 @@ const ProductsPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null)
 
   const fetchProducts = async () => {
-    const products = await getProducts()
-    setProducts(products)
+    const res = await getProducts()
+    if (res?.products) setProducts(res.products)
   }
 
   useEffect(() => {

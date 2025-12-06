@@ -1,9 +1,9 @@
 import React, { useState, useContext } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { AuthContext } from '../context/AuthContext'
+import { useUser } from '../context/user/useUser'
 
-const LoginPage: React.FC = () => {
-  const { login } = useContext(AuthContext)
+const LoginPage = () => {
+  const { login } = useUser()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')

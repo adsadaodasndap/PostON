@@ -1,8 +1,8 @@
 import { Box, Button, Typography } from '@mui/material'
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { askAssistant } from '../http/API'
 
-const AssistantPage: React.FC = () => {
+const AssistantPage = () => {
   const [question, setQuestion] = useState('')
   const [answer, setAnswer] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)

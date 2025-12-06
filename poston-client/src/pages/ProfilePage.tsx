@@ -1,9 +1,9 @@
 import React, { useContext, useState } from 'react'
-import { AuthContext } from '../context/AuthContext'
+import { useUser } from '../context/user/useUser'
 import { bindTg, confirmEmail, sendEmail, sendTg } from '../http/API'
 
-const ProfilePage: React.FC = () => {
-  const { user, logout } = useContext(AuthContext)
+const ProfilePage = () => {
+  const { user, logout } = useUser()
   const [code, setCode] = useState('')
   const [tgId, setTgId] = useState('')
 

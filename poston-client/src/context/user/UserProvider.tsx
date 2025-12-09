@@ -7,8 +7,8 @@ import { UserContext } from './UserContext'
 import type { CartItem } from '../../types/CartItem'
 
 export interface UserData {
-  user_id: number
-  role: 'ADMIN' | 'SELLER' | 'BUYER' | 'COURIER' | null
+  id: number
+  role: 'ADMIN' | 'SELLER' | 'BUYER' | 'COURIER' | 'POSTAMAT' | null
   firstName: string
   lastName: string
   email: string
@@ -18,7 +18,7 @@ export interface UserData {
 }
 
 const noUser: UserData = {
-  user_id: -1,
+  id: -1,
   role: null,
   firstName: '',
   lastName: '',
@@ -103,8 +103,9 @@ export const UserProvider = ({ children }: UserProviderProps) => {
             },
           })
           setSIO(socket)
+          if (resv.user.role === 'POSTAMAT') navigate('/postamat')
         } else {
-          navigate('/signin')
+          navigate('/')
           logout()
         }
       })

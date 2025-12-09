@@ -5,7 +5,7 @@ import HomeButton from './HomeButton'
 
 interface IWithAuth {
   c: JSX.Element
-  roles: ('BUYER' | 'SELLER' | 'ADMIN' | 'COURIER')[]
+  roles: ('BUYER' | 'SELLER' | 'ADMIN' | 'COURIER' | 'POSTAMAT')[]
 }
 
 const WithAuth = ({ c, roles }: IWithAuth) => {

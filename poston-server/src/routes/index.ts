@@ -8,7 +8,7 @@ const router = Router()
 router.use('/auth', authRouter)
 router.use(
   '/user',
-  accessLevel(['ADMIN', 'SELLER', 'BUYER', 'COURIER']),
+  accessLevel(['ADMIN', 'SELLER', 'BUYER', 'COURIER', 'POSTAMAT']),
   userRouter
 )
 // router.use('/admin', accessLevel(['ADMIN']), adminRouter);

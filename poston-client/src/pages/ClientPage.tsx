@@ -15,10 +15,37 @@ import {
   Typography,
 } from '@mui/material'
 import type { Purchase } from '../types'
+import { Scanner } from '@yudiel/react-qr-scanner'
+import { toast } from 'react-toastify'
+import { scanPostamat } from '../http/API'
 type RatingState = {
   pointsProduct: number | null
   pointsDelivery: number | null
   content: string
+}
+
+const highlightCodeOnCanvas = (detectedCodes: any, ctx: any) => {
+  detectedCodes.forEach((detectedCode: any) => {
+    const { boundingBox, cornerPoints } = detectedCode
+
+    // Draw bounding box
+    ctx.strokeStyle = '#00FF00'
+    ctx.lineWidth = 4
+    ctx.strokeRect(
+      boundingBox.x,
+      boundingBox.y,
+      boundingBox.width,
+      boundingBox.height
+    )
+
+    // Draw corner points
+    ctx.fillStyle = '#FF0000'
+    cornerPoints.forEach((point: any) => {
+      ctx.beginPath()
+      ctx.arc(point.x, point.y, 5, 0, 2 * Math.PI)
+      ctx.fill()
+    })
+  })
 }
 
 const mockClientPurchases: Purchase[] = [
@@ -107,6 +134,24 @@ function isDelivered(p: Purchase) {
 }
 
 export default function ClientPage() {
+  // const [qrtext, setQRtext] = React.useState('')
+  const [isPaused, setIsPaused] = React.useState(false)
+  const [hasPermission, setHasPermission] = React.useState(false)
+
+  const requestCameraPermission = async () => {
+    try {
+      await navigator.mediaDevices.getUserMedia({ video: true })
+      setHasPermission(true)
+    } catch (e) {
+      console.error('Нет доступа к камере', e)
+      setHasPermission(false)
+      toast.info('Разрешение на камеру отклонено.')
+    }
+  }
+  React.useEffect(() => {
+    requestCameraPermission()
+  }, [])
+
   const [purchases, setPurchases] =
     React.useState<Purchase[]>(mockClientPurchases)
   const [ratingDialogOpen, setRatingDialogOpen] = React.useState(false)
@@ -209,6 +254,39 @@ export default function ClientPage() {
         p: 2,
       }}
     >
+      {hasPermission && (
+        <Scanner
+          onScan={(result) => {
+            if (result) {
+              const val = result[0].rawValue
+              // setQRtext(val)
+              console.log(val)
+              setIsPaused(true)
+              scanPostamat(val).then((res) => {
+                if (res) {
+                  if (res.status === 'EMPTY') {
+                    toast.info('В этом постамате нет ваших товаров!')
+                  } else if (res.status === 'ID')
+                    toast.info('Заберите ваш товар!')
+                }
+              })
+              // setTimeout(() => setIsPaused(false), 1500)
+            }
+          }}
+          onError={(error) => console.log(error)}
+          formats={['qr_code']}
+          components={{
+            tracker: highlightCodeOnCanvas,
+          }}
+          paused={isPaused}
+          constraints={{
+            facingMode: 'environment',
+            aspectRatio: 1,
+            width: { ideal: 500 },
+            height: { ideal: 500 },
+          }}
+        />
+      )}
       <Paper
         sx={{
           maxWidth: 900,

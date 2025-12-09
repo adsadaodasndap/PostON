@@ -30,6 +30,17 @@ export default function TopBar() {
   const [mobileMoreAnchorEl, setMobileMoreAnchorEl] =
     useState<null | HTMLElement>(null)
 
+  const totalAmount = useMemo(
+    () =>
+      cart.reduce((prev, cur) => {
+        prev += cur.amount * cur.price
+        return prev
+      }, 0),
+    [cart]
+  )
+
+  if (user.role === 'POSTAMAT') return
+
   const isMenuOpen = Boolean(anchorEl)
   const isMobileMenuOpen = Boolean(mobileMoreAnchorEl)
 
@@ -138,15 +149,6 @@ export default function TopBar() {
     }
   }
 
-  const totalAmount = useMemo(
-    () =>
-      cart.reduce((prev, cur) => {
-        prev += cur.amount * cur.price
-        return prev
-      }, 0),
-    [cart]
-  )
-
   return (
     <Box sx={{ flexGrow: 1, width: 1 }}>
       <AppBar position="static">
@@ -177,9 +179,11 @@ export default function TopBar() {
               <Button sx={{ color: 'white' }}>Доставки</Button>
             </Link>
           )}
-          <Link to="/worker">
-            <Button sx={{ color: 'white' }}>Прием товара</Button>
-          </Link>
+          {user.role === 'SELLER' && (
+            <Link to="/worker">
+              <Button sx={{ color: 'white' }}>Прием товара</Button>
+            </Link>
+          )}
           {user.role === 'ADMIN' && (
             <Link to="/admin">
               <Button sx={{ color: 'white' }}>Админ-панель</Button>

@@ -63,6 +63,16 @@ export const signIn = async (email: string, password: string) => {
   }
 }
 
+export const scanPostamat = async (id: string) => {
+  try {
+    const res = await $host.post('user/scan', { id })
+    toast.success(res.data.message)
+    return res.data
+  } catch (error: unknown) {
+    handleApiError(error)
+  }
+}
+
 export const googleLogin = async (idToken: string) => {
   try {
     const res = await host.post('auth/google', { idToken })
@@ -134,7 +144,7 @@ export const confirmEmail = async (secret: string) => {
 
 export const getProducts = async () => {
   try {
-    const res = await $host.get('user/products')
+    const res = await $host.get('auth/products')
     return res.data
   } catch (e: any) {
     if (e.response?.data?.message) toast.error(e.response.data.message)

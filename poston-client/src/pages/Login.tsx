@@ -14,7 +14,8 @@ export default function Login() {
 
     if (res.token) {
       login(res.user, res.token)
-      navigate('/products')
+      if (res.user.role === 'POSTAMAT') navigate('/postamat')
+      else navigate('/products')
     }
   }
 

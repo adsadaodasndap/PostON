@@ -1,8 +1,8 @@
 import jwt, { JwtPayload } from 'jsonwebtoken'
 import { User } from '../db/models.js'
 import cfg from '../config.js'
-import { NextFunction, Response } from 'express'
-import { Request } from '../types/Request.js'
+import { NextFunction, Request, Response } from 'express'
+// import { Request } from '../types/Request.js'
 
 export default function accessLevel(roles: string[]) {
   return async function (req: Request, res: Response, next: NextFunction) {
@@ -25,6 +25,7 @@ export default function accessLevel(roles: string[]) {
       if (!user) {
         return res.status(403).json({ message: 'forbidden2' })
       }
+      // @ts-expect-error user is defined
       req.user = user
       return next()
     } catch (e) {

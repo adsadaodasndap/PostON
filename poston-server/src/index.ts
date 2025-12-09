@@ -15,7 +15,7 @@ const PORT = cfg.PORT
 
 const app = express()
 
-bot.launch()
+// bot.launch()
 
 app.use(cors({ origin: '*' }))
 app.use(express.json({ limit: '2mb' }))

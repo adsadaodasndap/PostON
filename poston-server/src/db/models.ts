@@ -15,7 +15,7 @@ import {
   HasOne,
 } from 'sequelize-typescript'
 
-export type UserRole = 'ADMIN' | 'SELLER' | 'BUYER' | 'COURIER'
+export type UserRole = 'ADMIN' | 'SELLER' | 'BUYER' | 'COURIER' | 'POSTAMAT'
 
 interface UserCreationAttributes {
   name: string
@@ -40,7 +40,7 @@ export class User extends Model<User, UserCreationAttributes> {
   declare name: string
 
   @Default('BUYER')
-  @Column(DataType.ENUM('ADMIN', 'SELLER', 'BUYER', 'COURIER'))
+  @Column(DataType.ENUM('ADMIN', 'SELLER', 'BUYER', 'COURIER', 'POSTAMAT'))
   declare role: UserRole
 
   @Column(DataType.STRING)

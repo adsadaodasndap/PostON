@@ -12,7 +12,7 @@ const transport = nodemailer.createTransport({
 export const sendEmail = async (to: string, subject: string, html: string) => {
   try {
     const res = await transport.sendMail({
-      from: '"Tester" <noreply@tester.kz>',
+      from: '"PostVON" <noreply@postvon.kz>',
       to,
       subject,
       text: html,
@@ -32,7 +32,7 @@ export const sendEmailAtt = async (
   filename: string
 ) => {
   const res = await transport.sendMail({
-    from: '"Tester" <noreply@tester.kz>',
+    from: '"PostVON" <noreply@tester.kz>',
     to,
     subject,
     text: html,

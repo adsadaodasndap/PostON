@@ -200,7 +200,6 @@ export const createAdminUser = async (payload: {
   first_name: string
   last_name: string
   email: string
-  password: string
   role: string
 }) => {
   try {

@@ -51,7 +51,6 @@ export default function AdminPage() {
   const [uFirst, setUFirst] = useState('')
   const [uLast, setULast] = useState('')
   const [uEmail, setUEmail] = useState('')
-  const [uPass, setUPass] = useState('')
   const [usersLoading, setUsersLoading] = useState(false)
   const [usersCreating, setUsersCreating] = useState(false)
 
@@ -76,8 +75,6 @@ export default function AdminPage() {
     if (!uFirst.trim()) return toast.error('Введите имя')
     if (!uLast.trim()) return toast.error('Введите фамилию')
     if (!uEmail.trim()) return toast.error('Введите почту')
-    if (!uPass.trim()) return toast.error('Введите пароль')
-    if (uPass.trim().length < 6) return toast.error('Пароль минимум 6 символов')
 
     setUsersCreating(true)
     try {
@@ -85,7 +82,6 @@ export default function AdminPage() {
         first_name: uFirst.trim(),
         last_name: uLast.trim(),
         email: uEmail.trim(),
-        password: uPass,
         role: uRole,
       })
 
@@ -95,7 +91,6 @@ export default function AdminPage() {
       setUFirst('')
       setULast('')
       setUEmail('')
-      setUPass('')
       setURole('COURIER')
 
       await loadUsers()
@@ -217,14 +212,6 @@ export default function AdminPage() {
               value={uEmail}
               onChange={(e) => setUEmail(e.target.value)}
             />
-            <TextField
-              label="Пароль"
-              size="small"
-              type="password"
-              value={uPass}
-              onChange={(e) => setUPass(e.target.value)}
-            />
-
             <Button
               variant="contained"
               onClick={submitCreateUser}

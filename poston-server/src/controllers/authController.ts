@@ -6,6 +6,7 @@ import { OAuth2Client } from 'google-auth-library'
 import { generateJwt } from '../helpers/generateJwt.js'
 import bcrypt from 'bcryptjs'
 import { randomBytes } from 'crypto'
+import { confEmail, welcomeEmail } from '../modules/email/confEmail.js'
 
 const googleClient = new OAuth2Client(cfg.GOOGLE_CLIENT_ID)
 
@@ -29,7 +30,10 @@ export const signUp = async (req: Request, res: Response) => {
       password: hashPassword,
       activation_code,
       role: 'BUYER',
+      active: false,
+      is_google: false,
     })
+    await confEmail(email, activation_code)
     return res.status(201).json({
       message: 'Пользователь успешно зарегистрирован!',
       user: newUser,
@@ -113,9 +117,9 @@ export const googleAuth = async (req: Request, res: Response) => {
 }
 export const createUserByAdmin = async (req: Request, res: Response) => {
   try {
-    const { first_name, last_name, email, password, role } = req.body
+    const { first_name, last_name, email, role } = req.body
 
-    if (!first_name || !last_name || !email || !password || !role) {
+    if (!first_name || !last_name || !email || !role) {
       return res.status(400).json({ message: 'Введите все данные' })
     }
 
@@ -131,6 +135,7 @@ export const createUserByAdmin = async (req: Request, res: Response) => {
         .json({ message: 'Данная почта уже зарегистрирована' })
     }
 
+    const password = randomBytes(8).toString('hex')
     const hashPassword = bcrypt.hashSync(password, 10)
 
     const newUser = await User.create({
@@ -140,6 +145,8 @@ export const createUserByAdmin = async (req: Request, res: Response) => {
       role,
       active: true,
     })
+
+    await welcomeEmail(email, password)
 
     return res.status(201).json({
       message: 'Пользователь создан',

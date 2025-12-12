@@ -210,7 +210,7 @@ const generateConfirmEmail = (data: {
               >
                 <p style="margin: 0">
                   С уважением,<br />
-                  ваш PEXpert
+                  ваш PostVON
                 </p>
               </td>
             </tr>

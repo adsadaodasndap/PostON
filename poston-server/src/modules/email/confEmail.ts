@@ -1,22 +1,28 @@
-import nodemailer from 'nodemailer'
 import cfg from '../../config.js'
+import generateConfirmEmail from './email_templates/confirmEmail.js'
+import generateWelcomeEmail from './email_templates/createEmail.js'
+import { sendEmail } from './index.js'
 
-export const confEmail = async (
-  recipientEmail: string,
-  activationCode: string
-) => {
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: cfg.GOOGLE_USER,
-      pass: cfg.GOOGLE_APP_PASSWORD,
-    },
-  })
-  const mailOptions = {
-    from: cfg.GOOGLE_USER,
-    to: recipientEmail,
-    subject: 'Подтверждение почты PostON',
-    text: `Ваш код подтверждения: ${activationCode}`,
-  }
-  await transporter.sendMail(mailOptions)
+export const confEmail = async (email: string, activationCode: string) => {
+  await sendEmail(
+    email,
+    'Подтверждение почты PostON',
+    generateConfirmEmail({
+      // TODO: Проверить: на какую страницу должно отправляться письмо
+      link: `${cfg.CLIENT}/?secret=${activationCode}`,
+      client: cfg.CLIENT,
+    })
+  )
+}
+
+export const welcomeEmail = async (email: string, password: string) => {
+  await sendEmail(
+    email,
+    'Добро пожаловать в PostVON!',
+    generateWelcomeEmail({
+      email,
+      password,
+      client: cfg.CLIENT,
+    })
+  )
 }

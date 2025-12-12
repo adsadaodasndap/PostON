@@ -16,15 +16,17 @@ import Menu from '@mui/material/Menu'
 import MenuItem from '@mui/material/MenuItem'
 import Toolbar from '@mui/material/Toolbar'
 import Typography from '@mui/material/Typography'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'react-toastify'
 import { useUser } from '../context/user/useUser'
 import type { CartItem } from '../types/CartItem'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { confirmEmail } from '../http/API'
 
 export default function TopBar() {
   const navigate = useNavigate()
-  const { user, cart, setCart, cartOpen, setCartOpen } = useUser()
+  const { user, cart, setUser, setCart, cartOpen, setCartOpen } = useUser()
+  const [searchParams] = useSearchParams()
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const [mobileMoreAnchorEl, setMobileMoreAnchorEl] =
@@ -38,6 +40,16 @@ export default function TopBar() {
       }, 0),
     [cart]
   )
+
+  useEffect(() => {
+    const secret = searchParams.get('secret')
+    if (!secret) return
+
+    confirmEmail(secret).then((isConfirmed: boolean) => {
+      if (!isConfirmed) return
+      setUser((prev) => ({ ...prev, active: true }))
+    })
+  }, [searchParams, setUser])
 
   if (user.role === 'POSTAMAT') return
 

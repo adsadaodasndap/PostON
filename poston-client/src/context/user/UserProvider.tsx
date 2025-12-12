@@ -9,19 +9,18 @@ import type { CartItem } from '../../types/CartItem'
 export interface UserData {
   id: number
   role: 'ADMIN' | 'SELLER' | 'BUYER' | 'COURIER' | 'POSTAMAT' | null
-  firstName: string
-  lastName: string
+  name: string
   email: string
   photoURL: string
   tg_id: string | null
+  active?: boolean
   // expired_password?: boolean
 }
 
 const noUser: UserData = {
   id: -1,
   role: null,
-  firstName: '',
-  lastName: '',
+  name: '',
   tg_id: '',
   email: '',
   photoURL: '',

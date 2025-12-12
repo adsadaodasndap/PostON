@@ -17,7 +17,7 @@ interface Order {
 }
 
 const OrdersPage = () => {
-  const { user, token } = useUser()
+  const { user } = useUser()
   const [orders, setOrders] = useState<Order[]>([])
   const [couriers, setCouriers] = useState<{ id: number; name: string }[]>([])
   const [loading, setLoading] = useState(true)
@@ -26,9 +26,6 @@ const OrdersPage = () => {
     const res = await fetch(
       `${process.env.REACT_APP_API_URL || 'http://localhost:3500'}/purchases`,
       {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       }
     )
     const data = await res.json()

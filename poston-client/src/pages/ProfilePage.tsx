@@ -1,4 +1,4 @@
-import React, { useContext, useState } from 'react'
+import { useState } from 'react'
 import { useUser } from '../context/user/useUser'
 import { bindTg, confirmEmail, sendEmail, sendTg } from '../http/API'
 

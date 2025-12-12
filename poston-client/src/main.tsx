@@ -10,7 +10,7 @@ import ClientPage from './pages/ClientPage'
 import CourierPage from './pages/CourierPage'
 import Login from './pages/Login'
 import NotFound from './pages/NotFound'
-import PostomatPage from './pages/PostomatPage'
+// import PostomatPage from './pages/PostomatPage.-tsx'
 import ProductsPage from './pages/ProductsPage'
 import ProfilePage from './pages/ProfilePage'
 import Register from './pages/Register'
@@ -33,7 +33,10 @@ const router = createBrowserRouter([
       {
         path: '/profile',
         element: (
-          <WithAuth c={<ProfilePage />} roles={['BUYER', 'SELLER', 'ADMIN']} />
+          <WithAuth
+            c={<ProfilePage />}
+            roles={['BUYER', 'SELLER', 'ADMIN', 'COURIER']}
+          />
         ),
       },
       {
@@ -50,10 +53,10 @@ const router = createBrowserRouter([
         path: '/courier',
         element: <WithAuth c={<CourierPage />} roles={['SELLER', 'ADMIN']} />,
       },
-      {
-        path: '/postamat',
-        element: <WithAuth c={<PostomatPage />} roles={['POSTAMAT']} />,
-      },
+      // {
+      //   path: '/postamat',
+      //   element: <WithAuth c={<PostomatPage />} roles={['POSTAMAT']} />,
+      // },
       {
         path: '/admin',
         element: <WithAuth c={<AdminPage />} roles={['ADMIN']} />,

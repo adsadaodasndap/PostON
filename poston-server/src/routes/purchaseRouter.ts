@@ -7,7 +7,9 @@ import {
 } from '../controllers/purchaseController'
 import accessLevel from '../middleware/accessLevel'
 
-const router = Router()
+// @ts-expect-error ????
+const router = new Router()
+
 router.get('/', getPurchases)
 router.post('/', accessLevel(['BUYER']), createPurchase)
 router.put('/:id/assign', accessLevel(['ADMIN']), assignCourier)

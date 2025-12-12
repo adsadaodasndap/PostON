@@ -1,7 +1,8 @@
 import { Router } from 'express'
 import { getBranches } from '../controllers/branchController'
 
-const router = Router()
+// @ts-expect-error ????
+const router = new Router()
 router.get('/', getBranches)
 
 export default router

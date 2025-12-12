@@ -4,7 +4,8 @@ import {
   getPostomatSlots,
 } from '../controllers/postomatController'
 
-const router = Router()
+// @ts-expect-error ????
+const router = new Router()
 router.get('/', getPostomats)
 router.get('/:id/slots', getPostomatSlots)
 

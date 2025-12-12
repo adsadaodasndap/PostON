@@ -1,6 +1,5 @@
 import { Response } from 'express'
-import { Op } from 'sequelize'
-import { Purchase, Product, User, Branch, Postomat, Slot } from '../db/models'
+import { Branch, Postomat, Product, Purchase, Slot, User } from '../db/models'
 import unexpectedError from '../helpers/unexpectedError'
 import bot from '../modules/telegram'
 import { Request } from '../types/Request'
@@ -47,7 +46,7 @@ export const createPurchase = async (req: Request, res: Response) => {
         const activePurchase = await Purchase.findOne({
           where: {
             postomat_slot: slot.id,
-            date_receive: { [Op.is]: null },
+            date_receive: null,
           },
         })
         if (!activePurchase) {
@@ -63,7 +62,7 @@ export const createPurchase = async (req: Request, res: Response) => {
       }
       slot_id = foundSlot.id
     } else if (dt === 'COURIER') {
-      courier_id = null
+      courier_id = undefined
     } else {
       return res.status(400).json({ message: 'Некорректный тип доставки' })
     }
@@ -76,8 +75,8 @@ export const createPurchase = async (req: Request, res: Response) => {
       postomat_slot: slot_id,
       courier_id: courier_id,
       date_buy: new Date(),
-      date_send: dt === 'COURIER' ? null : new Date(),
-      date_receive: null,
+      date_send: dt === 'COURIER' ? undefined : new Date(),
+      date_receive: undefined,
     })
     return res.status(201).json({
       message: 'Заказ оформлен',

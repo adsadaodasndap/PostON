@@ -7,7 +7,8 @@ import {
   verify,
 } from '../controllers/userController.js'
 
-const router = Router()
+// @ts-expect-error ????
+const router = new Router()
 
 router.post('/verify', verify)
 router.post('/email', sendConfEmail)

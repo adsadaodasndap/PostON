@@ -7,7 +7,6 @@ const sequelize = new Sequelize('database', 'username', 'password', {
   logging: false, // отключаем логи
 })
 
-// Модель заказа
 export class Order extends Model {
   public id!: number
   public userId!: number
@@ -23,8 +22,6 @@ Order.init(
   },
   { sequelize, modelName: 'order', tableName: 'orders' }
 )
-
-// Модель товара в заказе
 export class OrderItem extends Model {
   public id!: number
   public orderId!: number

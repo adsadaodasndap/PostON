@@ -196,3 +196,18 @@ export const askAssistant = async (question: string) => {
     console.log(e)
   }
 }
+export const createAdminUser = async (payload: {
+  first_name: string
+  last_name: string
+  email: string
+  password: string
+  role: string
+}) => {
+  try {
+    const res = await $host.post('auth/users', payload)
+    toast.success(res.data.message)
+    return res.data
+  } catch (error: unknown) {
+    handleApiError(error)
+  }
+}

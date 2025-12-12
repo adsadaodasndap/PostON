@@ -283,11 +283,13 @@ export class Purchase extends Model<Purchase, PurchaseCreationAttributes> {
   @Column(DataType.DATE)
   declare date_buy: Date
 
+  @AllowNull(false)
   @Column(DataType.DATE)
-  declare date_send: Date
+  declare date_send: Date | null
 
+  @AllowNull(false)
   @Column(DataType.DATE)
-  declare date_receive: Date
+  declare date_receive: Date | null
 
   @AllowNull(false)
   @Column(DataType.ENUM('BRANCH', 'POSTOMAT', 'COURIER'))

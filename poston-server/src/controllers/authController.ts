@@ -1,5 +1,4 @@
-import { Response } from 'express'
-import { Request } from '../types/Request.js'
+import { Request, Response } from 'express'
 import { User } from '../db/models.js'
 import unexpectedError from '../helpers/unexpectedError.js'
 import cfg from '../config.js'
@@ -107,6 +106,44 @@ export const googleAuth = async (req: Request, res: Response) => {
       message: `Добро пожаловать, ${user.name}!`,
       user,
       token: generateJwt(user.id, user.role),
+    })
+  } catch (e) {
+    return unexpectedError(res, e)
+  }
+}
+export const createUserByAdmin = async (req: Request, res: Response) => {
+  try {
+    const { first_name, last_name, email, password, role } = req.body
+
+    if (!first_name || !last_name || !email || !password || !role) {
+      return res.status(400).json({ message: 'Введите все данные' })
+    }
+
+    const allowedRoles = ['ADMIN', 'SELLER', 'BUYER', 'COURIER', 'POSTAMAT']
+    if (!allowedRoles.includes(role)) {
+      return res.status(400).json({ message: 'Некорректная роль' })
+    }
+
+    const candidate = await User.findOne({ where: { email } })
+    if (candidate) {
+      return res
+        .status(409)
+        .json({ message: 'Данная почта уже зарегистрирована' })
+    }
+
+    const hashPassword = bcrypt.hashSync(password, 10)
+
+    const newUser = await User.create({
+      name: `${first_name} ${last_name}`.trim(),
+      email,
+      password: hashPassword,
+      role,
+      active: true,
+    })
+
+    return res.status(201).json({
+      message: 'Пользователь создан',
+      user: newUser,
     })
   } catch (e) {
     return unexpectedError(res, e)

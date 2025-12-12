@@ -4,15 +4,21 @@ import {
   signUp,
   getUsers,
   googleAuth,
+  createUserByAdmin,
 } from '../controllers/authController.js'
 import { getProducts } from '../controllers/productController.js'
+import accessLevel from '../middleware/accessLevel.js'
 
-const router = Router()
+// @ts-expect-error ????
+const router = new Router()
 
 router.post('/signin', signIn)
 router.post('/signup', signUp)
-router.get('/users', getUsers)
 router.post('/google', googleAuth)
+
 router.get('/products', getProducts)
+
+router.get('/users', accessLevel(['ADMIN']), getUsers)
+router.post('/users', accessLevel(['ADMIN']), createUserByAdmin)
 
 export default router

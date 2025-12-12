@@ -4,7 +4,8 @@ import userRouter from './userRouter.js'
 import ordersRouter from './orders.js'
 import accessLevel from '../middleware/accessLevel.js'
 
-const router = Router()
+// @ts-expect-error ????
+const router = new Router()
 
 router.use('/auth', authRouter)
 router.use('/orders', ordersRouter)

@@ -8,7 +8,8 @@ import {
 } from '../controllers/productController'
 import accessLevel from '../middleware/accessLevel'
 
-const router = Router()
+// @ts-expect-error ????
+const router = new Router()
 router.get('/', getProducts)
 router.get('/:id', getProduct)
 router.post('/', accessLevel(['ADMIN', 'SELLER']), createProduct)

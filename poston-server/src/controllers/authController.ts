@@ -14,7 +14,7 @@ export const signUp = async (req: Request, res: Response) => {
   try {
     const { first_name, last_name, email, password } = req.body
     if (!first_name || !last_name || !email || !password) {
-      return res.status(400).json({ message: 'Введите все данныефвфывфыв' })
+      return res.status(400).json({ message: 'Введите все данные' })
     }
     const candidate = await User.findOne({ where: { email } })
     if (candidate) {

@@ -174,6 +174,11 @@ export default function TopBar() {
               <Button sx={{ color: 'white' }}>Посылки</Button>
             </Link>
           )}
+          {user.role === 'BUYER' && (
+            <Link to="/assistant">
+              <Button sx={{ ml: 2, color: 'white' }}>AI Ассистент</Button>
+            </Link>
+          )}
           {user.role === 'COURIER' && (
             <Link to="/courier">
               <Button sx={{ color: 'white' }}>Доставки</Button>

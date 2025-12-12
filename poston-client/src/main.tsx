@@ -52,7 +52,12 @@ const router = createBrowserRouter([
       },
       {
         path: '/courier',
-        element: <WithAuth c={<CourierPage />} roles={['SELLER', 'ADMIN']} />,
+        element: (
+          <WithAuth
+            c={<CourierPage />}
+            roles={['SELLER', 'ADMIN', 'COURIER']}
+          />
+        ),
       },
       // {
       //   path: '/postamat',
@@ -62,13 +67,13 @@ const router = createBrowserRouter([
         path: '/admin',
         element: <WithAuth c={<AdminPage />} roles={['ADMIN']} />,
       },
-      { path: '*', element: <NotFound /> },
       {
         path: '/checkout',
         element: (
           <WithAuth c={<Checkout />} roles={['BUYER', 'SELLER', 'ADMIN']} />
         ),
       },
+      { path: '*', element: <NotFound /> },
     ],
   },
 ])

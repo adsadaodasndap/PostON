@@ -11,6 +11,7 @@ import { sio_middleware, sio_chat } from './modules/sio/index.js'
 import bot from './modules/telegram/index.js'
 import './modules/cron/index.js'
 import ordersRouter from './routes/orders'
+import { generateProducts } from './db/generateProducts.js'
 
 const PORT = cfg.PORT
 
@@ -54,6 +55,7 @@ const start = async () => {
   try {
     await sequelize.authenticate()
     await sequelize.sync({ alter: true })
+    await generateProducts()
     server.listen(PORT, () => console.log(`Server started on port ${PORT}`))
   } catch (e) {
     console.log(e)

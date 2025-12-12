@@ -294,6 +294,19 @@ export default function TopBar() {
           <Typography textAlign={'center'} variant="h5" mb={3}>
             Итого: {totalAmount} тг
           </Typography>
+          {cart.length > 0 && (
+            <Button
+              variant="contained"
+              color="primary"
+              sx={{ mx: 4, mb: 4, width: 'calc(100% - 32px)' }}
+              onClick={() => {
+                setCartOpen(false)
+                navigate('/checkout')
+              }}
+            >
+              Оформить заказ
+            </Button>
+          )}
         </Stack>
       </SwipeableDrawer>
     </Box>

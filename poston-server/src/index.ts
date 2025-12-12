@@ -10,7 +10,6 @@ import sequelize from './db/db.js'
 import { sio_middleware, sio_chat } from './modules/sio/index.js'
 import bot from './modules/telegram/index.js'
 import './modules/cron/index.js'
-import ordersRouter from './routes/orders'
 import { generateProducts } from './db/generateProducts.js'
 
 const PORT = cfg.PORT
@@ -21,7 +20,6 @@ const app = express()
 
 app.use(cors({ origin: '*' }))
 app.use(express.json({ limit: '2mb' }))
-app.use('/api/orders', ordersRouter)
 app.use(fileUpload({ limits: { fileSize: 50 * 1024 * 1024 } }))
 app.use('/f', express.static('static'))
 

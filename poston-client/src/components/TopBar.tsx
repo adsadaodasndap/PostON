@@ -26,7 +26,7 @@ import { confirmEmail } from '../http/API'
 export default function TopBar() {
   const navigate = useNavigate()
   const { user, cart, setUser, setCart, cartOpen, setCartOpen } = useUser()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const [mobileMoreAnchorEl, setMobileMoreAnchorEl] =
@@ -44,7 +44,8 @@ export default function TopBar() {
   useEffect(() => {
     const secret = searchParams.get('secret')
     if (!secret) return
-
+    // TODO: После успешного подтверждения убрать параметр из URL с помощью setSearchParams
+    console.log(setSearchParams)
     confirmEmail(secret).then((isConfirmed: boolean) => {
       if (!isConfirmed) return
       setUser((prev) => ({ ...prev, active: true }))

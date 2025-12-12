@@ -17,6 +17,7 @@ import Register from './pages/Register'
 import WorkerPage from './pages/WorkerPage'
 import AdminPage from './pages/Admin'
 import Checkout from './pages/Checkout'
+import AssistantPage from './pages/AssistantPage'
 
 const router = createBrowserRouter([
   {
@@ -71,6 +72,15 @@ const router = createBrowserRouter([
         path: '/checkout',
         element: (
           <WithAuth c={<Checkout />} roles={['BUYER', 'SELLER', 'ADMIN']} />
+        ),
+      },
+      {
+        path: '/assistant',
+        element: (
+          <WithAuth
+            c={<AssistantPage />}
+            roles={['BUYER', 'SELLER', 'ADMIN', 'COURIER']}
+          />
         ),
       },
       { path: '*', element: <NotFound /> },

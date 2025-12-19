@@ -37,7 +37,7 @@ app.use((req, res, next) => {
   )
   next()
 })
-app.listen(3000, () => console.log('Server started'))
+//app.listen(3000, () => console.log('Server started'))
 
 const server = http.createServer(app)
 export const io = new Server(server, {

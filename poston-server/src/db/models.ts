@@ -254,13 +254,13 @@ interface PurchaseCreationAttributes {
   user_id: number
   product_id: number
   date_buy?: Date
-  date_send?: Date
-  date_receive?: Date
+  date_send?: Date | null
+  date_receive?: Date | null
   delivery_type: DeliveryType
-  branch_id?: number
-  postomat_id?: number
-  courier_id?: number
-  postomat_slot?: number
+  branch_id?: number | null
+  postomat_id?: number | null
+  courier_id?: number | null
+  postomat_slot?: number | null
 }
 
 @Table({ timestamps: true })
@@ -283,11 +283,11 @@ export class Purchase extends Model<Purchase, PurchaseCreationAttributes> {
   @Column(DataType.DATE)
   declare date_buy: Date
 
-  @AllowNull(false)
+  @AllowNull(true)
   @Column(DataType.DATE)
   declare date_send: Date | null
 
-  @AllowNull(false)
+  @AllowNull(true)
   @Column(DataType.DATE)
   declare date_receive: Date | null
 
@@ -295,21 +295,25 @@ export class Purchase extends Model<Purchase, PurchaseCreationAttributes> {
   @Column(DataType.ENUM('BRANCH', 'POSTOMAT', 'COURIER'))
   declare delivery_type: DeliveryType
 
+  @AllowNull(true)
   @ForeignKey(() => Branch)
   @Column(DataType.INTEGER)
-  declare branch_id: number
+  declare branch_id: number | null
 
+  @AllowNull(true)
   @ForeignKey(() => Postomat)
   @Column(DataType.INTEGER)
-  declare postomat_id: number
+  declare postomat_id: number | null
 
+  @AllowNull(true)
   @ForeignKey(() => User)
   @Column(DataType.INTEGER)
-  declare courier_id: number
+  declare courier_id: number | null
 
+  @AllowNull(true)
   @ForeignKey(() => Slot)
   @Column(DataType.INTEGER)
-  declare postomat_slot: number
+  declare postomat_slot: number | null
 
   @BelongsTo(() => User, { foreignKey: 'user_id', as: 'buyer' })
   declare buyer: User

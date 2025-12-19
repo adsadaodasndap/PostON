@@ -8,21 +8,25 @@ export const createPurchase = async (req: Request, res: Response) => {
   try {
     if (!req.user)
       return res.status(401).json({ message: 'authorization_required' })
+
     const { productId, deliveryType, branchId, postomatId } = req.body
+
     if (!productId || !deliveryType) {
       return res
         .status(400)
         .json({ message: 'Необходимо указать товар и тип доставки' })
     }
+
     const product = await Product.findByPk(productId)
-    if (!product) {
-      return res.status(404).json({ message: 'Товар не найден' })
-    }
-    let branch_id: number | undefined
-    let postomat_id: number | undefined
-    let slot_id: number | undefined
-    let courier_id: number | undefined = undefined
-    const dt: string = deliveryType.toUpperCase()
+    if (!product) return res.status(404).json({ message: 'Товар не найден' })
+
+    let branch_id: number | null = null
+    let postomat_id: number | null = null
+    let postomat_slot: number | null = null
+    let courier_id: number | null = null
+
+    const dt: string = String(deliveryType).toUpperCase()
+
     if (dt === 'BRANCH') {
       if (!branchId) {
         return res
@@ -35,49 +39,61 @@ export const createPurchase = async (req: Request, res: Response) => {
         return res.status(400).json({ message: 'Необходимо выбрать постомат' })
       }
       postomat_id = Number(postomatId)
-      const slots = await Slot.findAll({ where: { postomat_id: postomat_id } })
-      let foundSlot: Slot | undefined
+
+      const slots = await Slot.findAll({ where: { postomat_id } })
+
+      let foundSlot: Slot | null = null
+
       for (const slot of slots) {
         const sizeOk =
           product.length <= slot.length &&
           product.width <= slot.width &&
           product.height <= slot.height
+
         if (!sizeOk) continue
+
         const activePurchase = await Purchase.findOne({
           where: {
             postomat_slot: slot.id,
             date_receive: null,
           },
         })
+
         if (!activePurchase) {
           foundSlot = slot
           break
         }
       }
+
       if (!foundSlot) {
         return res.status(409).json({
           message:
             'Нет доступной ячейки подходящего размера в выбранном постомате',
         })
       }
-      slot_id = foundSlot.id
+
+      postomat_slot = foundSlot.id
     } else if (dt === 'COURIER') {
-      courier_id = undefined
+      courier_id = null
     } else {
       return res.status(400).json({ message: 'Некорректный тип доставки' })
     }
+
     const newPurchase = await Purchase.create({
       user_id: req.user.id,
       product_id: product.id,
       delivery_type: dt,
-      branch_id: branch_id,
-      postomat_id: postomat_id,
-      postomat_slot: slot_id,
-      courier_id: courier_id,
+
+      courier_id,
+      branch_id,
+      postomat_id,
+      postomat_slot,
+
       date_buy: new Date(),
-      date_send: dt === 'COURIER' ? undefined : new Date(),
-      date_receive: undefined,
+      date_send: dt === 'COURIER' ? null : new Date(),
+      date_receive: null,
     })
+
     return res.status(201).json({
       message: 'Заказ оформлен',
       purchase: newPurchase,

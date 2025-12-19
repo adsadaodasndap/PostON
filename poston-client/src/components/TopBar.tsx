@@ -21,7 +21,7 @@ import { toast } from 'react-toastify'
 import { useUser } from '../context/user/useUser'
 import type { CartItem } from '../types/CartItem'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { confirmEmail } from '../http/API'
+import { confirmEmail, createPurchase } from '../http/API'
 
 export default function TopBar() {
   const navigate = useNavigate()
@@ -52,7 +52,7 @@ export default function TopBar() {
     })
   }, [searchParams, setUser])
 
-  if (user.role === 'POSTAMAT') return
+  if (user.role === 'POSTAMAT') return null
 
   const isMenuOpen = Boolean(anchorEl)
   const isMobileMenuOpen = Boolean(mobileMoreAnchorEl)
@@ -144,9 +144,7 @@ export default function TopBar() {
 
   const changeAmount = (prod: CartItem, amount: number) => {
     const ix = cart.findIndex((p) => p.id === prod.id)
-
     const _cart = structuredClone(cart)
-
     const newAmount = _cart[ix].amount + amount
 
     if (newAmount === 6) {
@@ -182,26 +180,31 @@ export default function TopBar() {
           <Link to="/products">
             <Button sx={{ ml: 3, color: 'white' }}>Каталог</Button>
           </Link>
+
           {user.role === 'BUYER' && (
             <Link to="/client">
               <Button sx={{ color: 'white' }}>Посылки</Button>
             </Link>
           )}
+
           {user.role === 'BUYER' && (
             <Link to="/assistant">
               <Button sx={{ ml: 2, color: 'white' }}>AI Ассистент</Button>
             </Link>
           )}
+
           {user.role === 'COURIER' && (
             <Link to="/courier">
               <Button sx={{ color: 'white' }}>Доставки</Button>
             </Link>
           )}
+
           {user.role === 'SELLER' && (
             <Link to="/worker">
               <Button sx={{ color: 'white' }}>Прием товара</Button>
             </Link>
           )}
+
           {user.role === 'ADMIN' && (
             <Link to="/admin">
               <Button sx={{ color: 'white' }}>Админ-панель</Button>
@@ -209,6 +212,7 @@ export default function TopBar() {
           )}
 
           <Box sx={{ flexGrow: 1 }} />
+
           <IconButton
             size="large"
             color="inherit"
@@ -218,13 +222,15 @@ export default function TopBar() {
               <ShoppingCartIcon />
             </Badge>
           </IconButton>
-          <Stack direction={'row'} sx={{ display: { xs: 'none', md: 'flex' } }}>
+
+          <Stack direction="row" sx={{ display: { xs: 'none', md: 'flex' } }}>
             <Link to="/profile">
               <Button variant="contained" startIcon={<AccountCircle />}>
                 {user.email}
               </Button>
             </Link>
           </Stack>
+
           <Box sx={{ display: { xs: 'flex', md: 'none' } }}>
             <IconButton
               size="large"
@@ -236,8 +242,10 @@ export default function TopBar() {
           </Box>
         </Toolbar>
       </AppBar>
+
       {renderMobileMenu}
       {renderMenu}
+
       <SwipeableDrawer
         anchor="right"
         open={cartOpen}
@@ -252,15 +260,14 @@ export default function TopBar() {
         <Typography
           variant="h6"
           sx={{ mx: 2, mb: 4, mt: 2 }}
-          textAlign={'center'}
+          textAlign="center"
         >
           Ваша корзина
         </Typography>
-        {cart.length === 0 && (
-          <Stack alignItems={'center'}>
-            {/* <AddShoppingCartIcon sx={{ fontSize: 71 }} /> */}
-            <Typography sx={{ fontSize: 71 }}>😔</Typography>
 
+        {cart.length === 0 && (
+          <Stack alignItems="center">
+            <Typography sx={{ fontSize: 71 }}>😔</Typography>
             <Typography variant="h6">
               Жаль, что вы ничего не купили...
             </Typography>
@@ -274,23 +281,25 @@ export default function TopBar() {
             </Button>
           </Stack>
         )}
+
         <Stack height={1}>
           {cart.map((p) => (
             <Paper
+              key={p.id}
               component={Stack}
-              alignItems={'center'}
+              alignItems="center"
               mt={2}
               mx={4}
               p={1.5}
               elevation={6}
             >
               <Typography sx={{ mr: 3, mb: 1 }}>{p.name}</Typography>
-              <Stack direction={'row'} alignItems={'center'}>
+              <Stack direction="row" alignItems="center">
                 <Checkbox sx={{ mr: 1 }} />
                 <Paper
                   component={Stack}
-                  direction={'row'}
-                  alignItems={'center'}
+                  direction="row"
+                  alignItems="center"
                   sx={{ mr: 3 }}
                 >
                   <IconButton onClick={() => changeAmount(p, -1)}>
@@ -308,18 +317,37 @@ export default function TopBar() {
               </Stack>
             </Paper>
           ))}
+
           <Box sx={{ flexGrow: 1 }} />
-          <Typography textAlign={'center'} variant="h5" mb={3}>
+
+          <Typography textAlign="center" variant="h5" mb={3}>
             Итого: {totalAmount} тг
           </Typography>
+
           {cart.length > 0 && (
             <Button
               variant="contained"
               color="primary"
               sx={{ mx: 4, mb: 4, width: 'calc(100% - 32px)' }}
-              onClick={() => {
-                setCartOpen(false)
-                navigate('/checkout')
+              onClick={async () => {
+                try {
+                  for (const item of cart) {
+                    for (let k = 0; k < item.amount; k++) {
+                      const r = await createPurchase({
+                        productId: item.id,
+                        deliveryType: 'COURIER',
+                      })
+                      if (!r) throw new Error('Не удалось создать заказ')
+                    }
+                  }
+
+                  setCart([])
+                  setCartOpen(false)
+                  navigate('/client')
+                } catch (e) {
+                  console.log(e)
+                  toast.error('Ошибка оформления заказа')
+                }
               }}
             >
               Оформить заказ

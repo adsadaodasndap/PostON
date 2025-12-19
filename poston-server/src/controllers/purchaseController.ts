@@ -228,3 +228,34 @@ export const markDelivered = async (req: Request, res: Response) => {
     return unexpectedError(res, e)
   }
 }
+export const markReceived = async (req: Request, res: Response) => {
+  try {
+    if (!req.user)
+      return res.status(401).json({ message: 'authorization_required' })
+
+    const { id } = req.params
+
+    const purchase = await Purchase.findByPk(id)
+    if (!purchase) {
+      return res.status(404).json({ message: 'Заказ не найден' })
+    }
+    if (purchase.user_id !== req.user.id) {
+      return res.status(403).json({ message: 'forbidden' })
+    }
+
+    if (purchase.date_receive) {
+      return res
+        .status(400)
+        .json({ message: 'Посылка уже отмечена полученной' })
+    }
+
+    await Purchase.update(
+      { date_receive: new Date() },
+      { where: { id: purchase.id } }
+    )
+
+    return res.json({ message: 'Посылка отмечена полученной' })
+  } catch (e) {
+    return unexpectedError(res, e)
+  }
+}

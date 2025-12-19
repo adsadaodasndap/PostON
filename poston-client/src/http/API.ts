@@ -210,3 +210,34 @@ export const createAdminUser = async (payload: {
     handleApiError(error)
   }
 }
+export const createPurchase = async (payload: {
+  productId: number
+  deliveryType: 'COURIER' | 'POSTOMAT' | 'BRANCH'
+  branchId?: number
+  postomatId?: number
+}) => {
+  try {
+    const res = await $host.post('purchase', payload)
+    toast.success(res.data.message)
+    return res.data
+  } catch (error: unknown) {
+    handleApiError(error)
+  }
+}
+export const getPurchases = async () => {
+  try {
+    const res = await $host.get('purchase')
+    return res.data
+  } catch (error: unknown) {
+    handleApiError(error)
+  }
+}
+export const receivePurchase = async (id: number) => {
+  try {
+    const res = await $host.put(`purchase/${id}/receive`)
+    toast.success(res.data.message)
+    return res.data
+  } catch (error: unknown) {
+    handleApiError(error)
+  }
+}

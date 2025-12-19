@@ -17,7 +17,8 @@ import {
 import type { Purchase } from '../types'
 import { Scanner } from '@yudiel/react-qr-scanner'
 import { toast } from 'react-toastify'
-import { scanPostamat } from '../http/API'
+import { getPurchases, receivePurchase, scanPostamat } from '../http/API'
+
 type RatingState = {
   pointsProduct: number | null
   pointsDelivery: number | null
@@ -28,7 +29,6 @@ const highlightCodeOnCanvas = (detectedCodes: any, ctx: any) => {
   detectedCodes.forEach((detectedCode: any) => {
     const { boundingBox, cornerPoints } = detectedCode
 
-    // Draw bounding box
     ctx.strokeStyle = '#00FF00'
     ctx.lineWidth = 4
     ctx.strokeRect(
@@ -38,7 +38,6 @@ const highlightCodeOnCanvas = (detectedCodes: any, ctx: any) => {
       boundingBox.height
     )
 
-    // Draw corner points
     ctx.fillStyle = '#FF0000'
     cornerPoints.forEach((point: any) => {
       ctx.beginPath()
@@ -47,81 +46,6 @@ const highlightCodeOnCanvas = (detectedCodes: any, ctx: any) => {
     })
   })
 }
-
-const mockClientPurchases: Purchase[] = [
-  {
-    id: 1,
-    user_id: 1,
-    product_id: 1,
-    date_buy: '2025-10-01T12:00:00Z',
-    date_send: '2025-10-02T10:00:00Z',
-    delivery_type: 'POSTOMAT',
-    postomat_id: 1,
-    postomat_slot: 1,
-    product: {
-      id: 1,
-      name: 'Кроссовки',
-      cost: 45000,
-      length: 30,
-      width: 20,
-      height: 12,
-      weight: 0.8,
-    },
-    postomat: { id: 1, adress: 'Постамат ТЦ «Mega»', lat: 49.97, lon: 82.61 },
-    slot: { id: 1, postomat_id: 1, width: 35, height: 20, length: 40 },
-    review: undefined,
-  },
-  {
-    id: 2,
-    user_id: 1,
-    product_id: 2,
-    date_buy: '2025-10-05T14:00:00Z',
-    date_send: '2025-10-06T09:00:00Z',
-    date_receive: '2025-10-07T18:30:00Z',
-    delivery_type: 'BRANCH',
-    branch_id: 1,
-    product: {
-      id: 2,
-      name: 'Наушники',
-      cost: 25000,
-      length: 15,
-      width: 15,
-      height: 10,
-      weight: 0.3,
-    },
-    branch: { id: 1, adress: 'Отделение №3, Оскемен', post_rating: 5 },
-    review: {
-      id: 1,
-      purchase_id: 2,
-      points_product: 5,
-      points_delivery: 4,
-      content: 'Все отлично, только немного задержали выдачу',
-    },
-  },
-  {
-    id: 3,
-    user_id: 1,
-    product_id: 3,
-    date_buy: '2025-10-10T09:00:00Z',
-    date_send: '2025-10-10T16:00:00Z',
-    date_receive: '2025-10-11T13:15:00Z',
-    delivery_type: 'POSTOMAT',
-    postomat_id: 2,
-    postomat_slot: 3,
-    product: {
-      id: 3,
-      name: 'Футболка',
-      cost: 8000,
-      length: 25,
-      width: 20,
-      height: 3,
-      weight: 0.2,
-    },
-    postomat: { id: 2, adress: 'Постамат возле ВКТУ', lat: 49.96, lon: 82.61 },
-    slot: { id: 3, postomat_id: 2, width: 35, height: 20, length: 40 },
-    review: undefined,
-  },
-]
 
 function formatDeliveryType(type: Purchase['delivery_type']) {
   if (type === 'POSTOMAT') return 'Получение в постамате'
@@ -134,7 +58,6 @@ function isDelivered(p: Purchase) {
 }
 
 export default function ClientPage() {
-  // const [qrtext, setQRtext] = React.useState('')
   const [isPaused, setIsPaused] = React.useState(false)
   const [hasPermission, setHasPermission] = React.useState(false)
 
@@ -148,12 +71,29 @@ export default function ClientPage() {
       toast.info('Разрешение на камеру отклонено.')
     }
   }
+
   React.useEffect(() => {
     requestCameraPermission()
   }, [])
+  const [purchases, setPurchases] = React.useState<Purchase[]>([])
+  const [loadingPurchases, setLoadingPurchases] = React.useState(false)
 
-  const [purchases, setPurchases] =
-    React.useState<Purchase[]>(mockClientPurchases)
+  const fetchPurchases = async () => {
+    setLoadingPurchases(true)
+    try {
+      const data = await getPurchases()
+      const list = data?.purchases
+      if (Array.isArray(list)) setPurchases(list)
+      else setPurchases([])
+    } finally {
+      setLoadingPurchases(false)
+    }
+  }
+
+  React.useEffect(() => {
+    fetchPurchases()
+  }, [])
+
   const [ratingDialogOpen, setRatingDialogOpen] = React.useState(false)
   const [selectedPurchaseId, setSelectedPurchaseId] = React.useState<
     number | null
@@ -171,18 +111,12 @@ export default function ClientPage() {
     ? (purchases.find((p) => p.id === selectedPurchaseId) ?? null)
     : null
 
-  const handleMarkAsReceived = (purchaseId: number) => {
-    const now = new Date().toISOString()
-    setPurchases((prev) =>
-      prev.map((p) =>
-        p.id === purchaseId
-          ? {
-              ...p,
-              date_receive: now,
-            }
-          : p
-      )
-    )
+  const handleMarkAsReceived = async (purchaseId: number) => {
+    const res = await receivePurchase(purchaseId)
+    if (!res) return
+
+    await fetchPurchases()
+
     setSelectedPurchaseId(purchaseId)
     setRating({
       pointsProduct: null,
@@ -215,7 +149,6 @@ export default function ClientPage() {
     setRatingDialogOpen(false)
     setSelectedPurchaseId(null)
   }
-
   const handleSubmitRating = () => {
     if (!selectedPurchase) return
     if (!rating.pointsProduct || !rating.pointsDelivery) return
@@ -252,6 +185,8 @@ export default function ClientPage() {
         alignItems: 'center',
         justifyContent: 'center',
         p: 2,
+        gap: 2,
+        flexWrap: 'wrap',
       }}
     >
       {hasPermission && (
@@ -259,18 +194,19 @@ export default function ClientPage() {
           onScan={(result) => {
             if (result) {
               const val = result[0].rawValue
-              // setQRtext(val)
               console.log(val)
               setIsPaused(true)
+
               scanPostamat(val).then((res) => {
                 if (res) {
                   if (res.status === 'EMPTY') {
                     toast.info('В этом постамате нет ваших товаров!')
-                  } else if (res.status === 'ID')
+                  } else if (res.status === 'ID') {
                     toast.info('Заберите ваш товар!')
+                  }
                 }
+                setTimeout(() => setIsPaused(false), 1200)
               })
-              // setTimeout(() => setIsPaused(false), 1500)
             }
           }}
           onError={(error) => console.log(error)}
@@ -287,6 +223,7 @@ export default function ClientPage() {
           }}
         />
       )}
+
       <Paper
         sx={{
           maxWidth: 900,
@@ -299,16 +236,23 @@ export default function ClientPage() {
         <Typography variant="h5" sx={{ mb: 2, fontWeight: 600 }}>
           Интерфейс пользователя
         </Typography>
+
         <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
           Здесь пользователь видит свои покупки и может оценить товар и доставку
           после получения.
         </Typography>
 
+        {loadingPurchases && (
+          <Typography sx={{ mb: 2, color: 'text.secondary' }}>
+            Загрузка посылок...
+          </Typography>
+        )}
+
         <Typography variant="h6" sx={{ mb: 1.5 }}>
           Активные посылки
         </Typography>
 
-        {activePurchases.length === 0 && (
+        {!loadingPurchases && activePurchases.length === 0 && (
           <Typography sx={{ mb: 2, color: 'text.secondary' }}>
             Активных посылок нет.
           </Typography>
@@ -343,19 +287,23 @@ export default function ClientPage() {
                     variant="outlined"
                   />
                 </Stack>
+
                 <Typography variant="body2" color="text.secondary">
                   Номер покупки: {p.id}
                 </Typography>
+
                 {p.product && (
                   <Typography variant="body2" color="text.secondary">
                     Стоимость: {p.product.cost} ₸
                   </Typography>
                 )}
+
                 {p.delivery_type === 'BRANCH' && p.branch && (
                   <Typography variant="body2" color="text.secondary">
                     Отделение: {p.branch.adress}
                   </Typography>
                 )}
+
                 {p.delivery_type === 'POSTOMAT' && p.postomat && (
                   <Typography variant="body2" color="text.secondary">
                     Постамат: {p.postomat.adress}
@@ -399,7 +347,7 @@ export default function ClientPage() {
           Полученные посылки
         </Typography>
 
-        {deliveredPurchases.length === 0 && (
+        {!loadingPurchases && deliveredPurchases.length === 0 && (
           <Typography sx={{ color: 'text.secondary' }}>
             История полученных посылок появится после первой выдачи.
           </Typography>
@@ -434,12 +382,14 @@ export default function ClientPage() {
                     variant="outlined"
                   />
                 </Stack>
+
                 <Typography variant="body2" color="text.secondary">
                   Номер покупки: {p.id}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   Способ: {formatDeliveryType(p.delivery_type)}
                 </Typography>
+
                 {p.review ? (
                   <Typography variant="body2" color="text.secondary">
                     Оценка товара: {p.review.points_product}, доставка:{' '}
@@ -450,6 +400,7 @@ export default function ClientPage() {
                     Для этой посылки оценка ещё не оставлена.
                   </Typography>
                 )}
+
                 <Button
                   variant="outlined"
                   sx={{ mt: 1, borderColor: '#6f2dbd', color: '#6f2dbd' }}
@@ -487,6 +438,7 @@ export default function ClientPage() {
                   }
                 />
               </Box>
+
               <Box>
                 <Typography variant="body2" sx={{ mb: 0.5 }}>
                   Оценка доставки
@@ -501,6 +453,7 @@ export default function ClientPage() {
                   }
                 />
               </Box>
+
               <TextField
                 label="Комментарий к товару или доставке"
                 multiline
@@ -516,6 +469,7 @@ export default function ClientPage() {
               />
             </Stack>
           </DialogContent>
+
           <DialogActions>
             <Button onClick={handleCloseDialog}>Отмена</Button>
             <Button

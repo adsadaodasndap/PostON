@@ -3,7 +3,7 @@ import express from 'express'
 import { Server } from 'socket.io'
 import http from 'http'
 import fileUpload from 'express-fileupload'
-
+import { seedPostomatWithSlots } from './scripts/seedPostomat.js'
 import cfg from './config.js'
 import router from './routes/index.js'
 import sequelize from './db/db.js'
@@ -53,6 +53,7 @@ const start = async () => {
   try {
     await sequelize.authenticate()
     await sequelize.sync({ alter: true })
+    await seedPostomatWithSlots()
     await generateProducts()
     server.listen(PORT, () => console.log(`Server started on port ${PORT}`))
   } catch (e) {

@@ -17,6 +17,15 @@ import {
 
 export type UserRole = 'ADMIN' | 'SELLER' | 'BUYER' | 'COURIER' | 'POSTAMAT'
 export type CourierMode = 'HOME' | 'POSTOMAT'
+export type PurchaseStatus =
+  | 'CREATED'
+  | 'COURIER_ASSIGNED'
+  | 'SLOT_RESERVED'
+  | 'DOOR_OPEN'
+  | 'PLACED'
+  | 'DOOR_CLOSED'
+  | 'READY_FOR_PICKUP'
+  | 'PICKED_UP'
 
 interface UserCreationAttributes {
   name: string
@@ -262,7 +271,13 @@ interface PurchaseCreationAttributes {
   postomat_id?: number | null
   courier_id?: number | null
   postomat_slot?: number | null
-  courier_mode?: CourierMode | null
+  courier_mode?: CourierMode
+  courier_qr?: string | null
+  client_qr?: string | null
+  slot_reserved_until?: Date | null
+  slot_reserved_id?: number | null
+  door_opened?: boolean
+  status?: PurchaseStatus
 }
 
 @Table({ timestamps: true })
@@ -297,6 +312,22 @@ export class Purchase extends Model<Purchase, PurchaseCreationAttributes> {
   @Column(DataType.ENUM('BRANCH', 'POSTOMAT', 'COURIER'))
   declare delivery_type: DeliveryType
 
+  @Default('CREATED')
+  @AllowNull(false)
+  @Column(
+    DataType.ENUM(
+      'CREATED',
+      'COURIER_ASSIGNED',
+      'SLOT_RESERVED',
+      'DOOR_OPEN',
+      'PLACED',
+      'DOOR_CLOSED',
+      'READY_FOR_PICKUP',
+      'PICKED_UP'
+    )
+  )
+  declare status: PurchaseStatus
+
   @Default('HOME')
   @AllowNull(false)
   @Column(DataType.ENUM('HOME', 'POSTOMAT'))
@@ -320,6 +351,30 @@ export class Purchase extends Model<Purchase, PurchaseCreationAttributes> {
   @ForeignKey(() => Slot)
   @Column(DataType.INTEGER)
   declare postomat_slot: number | null
+
+  @Unique
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  declare courier_qr: string | null
+
+  @Unique
+  @AllowNull(true)
+  @Column(DataType.STRING)
+  declare client_qr: string | null
+
+  @AllowNull(true)
+  @Column(DataType.DATE)
+  declare slot_reserved_until: Date | null
+
+  @AllowNull(true)
+  @ForeignKey(() => Slot)
+  @Column(DataType.INTEGER)
+  declare slot_reserved_id: number | null
+
+  @Default(false)
+  @AllowNull(false)
+  @Column(DataType.BOOLEAN)
+  declare door_opened: boolean
 
   @BelongsTo(() => User, { foreignKey: 'user_id', as: 'buyer' })
   declare buyer: User

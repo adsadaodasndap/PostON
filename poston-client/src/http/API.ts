@@ -215,6 +215,8 @@ export const createPurchase = async (payload: {
   deliveryType: 'COURIER' | 'POSTOMAT' | 'BRANCH'
   branchId?: number
   postomatId?: number
+  courierId?: number
+  courierMode?: 'HOME' | 'POSTOMAT'
 }) => {
   try {
     const res = await $host.post('purchase', payload)
@@ -232,10 +234,38 @@ export const getPurchases = async () => {
     handleApiError(error)
   }
 }
+
+export const markPurchaseDelivered = async (id: number) => {
+  try {
+    const res = await $host.put(`purchase/${id}/deliver`)
+    toast.success(res.data.message)
+    return res.data
+  } catch (error: unknown) {
+    handleApiError(error)
+  }
+}
+
+export const markPurchasePlaced = async (id: number) => {
+  try {
+    const res = await $host.put(`purchase/${id}/placed`)
+    toast.success(res.data.message)
+    return res.data
+  } catch (error: unknown) {
+    handleApiError(error)
+  }
+}
 export const receivePurchase = async (id: number) => {
   try {
     const res = await $host.put(`purchase/${id}/receive`)
     toast.success(res.data.message)
+    return res.data
+  } catch (error: unknown) {
+    handleApiError(error)
+  }
+}
+export const getCouriers = async () => {
+  try {
+    const res = await $host.get('purchase/couriers')
     return res.data
   } catch (error: unknown) {
     handleApiError(error)

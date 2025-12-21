@@ -38,6 +38,7 @@ import { toast } from 'react-toastify'
 import { useUser } from '../context/user/useUser'
 import type { CartItem } from '../types/CartItem'
 import { confirmEmail, createPurchase, getCouriers } from '../http/API'
+import type { SelectChangeEvent } from '@mui/material/Select'
 
 type CourierDTO = { id: number; name: string; email: string }
 
@@ -52,7 +53,7 @@ export default function TopBar() {
 
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [couriers, setCouriers] = useState<CourierDTO[]>([])
-const [courierId, setCourierId] = useState<number | null>(null)
+  const [courierId, setCourierId] = useState<number | null>(null)
   const [courierMode, setCourierMode] = useState<'HOME' | 'POSTOMAT'>('HOME')
   const [couriersLoading, setCouriersLoading] = useState(false)
   const [checkoutSubmitting, setCheckoutSubmitting] = useState(false)
@@ -125,15 +126,14 @@ const [courierId, setCourierId] = useState<number | null>(null)
     if (cart.length === 0) return
 
     setCheckoutOpen(true)
-    setCourierId('')
+    setCourierId(null)
     setCourierMode('HOME')
 
     try {
       setCouriersLoading(true)
       const r = await getCouriers()
-      if (r?.couriers) {
-        setCouriers(r.couriers)
-      } else {
+      if (r?.couriers) setCouriers(r.couriers)
+      else {
         setCouriers([])
         toast.error('Не удалось получить список курьеров')
       }
@@ -152,20 +152,19 @@ const [courierId, setCourierId] = useState<number | null>(null)
   }
 
   const submitCheckout = async () => {
-    if (!courierId) {
+    if (courierId === null) {
       toast.error('Выберите курьера')
       return
     }
 
     try {
       setCheckoutSubmitting(true)
-
       for (const item of cart) {
         for (let k = 0; k < item.amount; k++) {
           const r = await createPurchase({
             productId: item.id,
             deliveryType: 'COURIER',
-            courierId: Number(courierId),
+            courierId, // уже number
             courierMode,
           })
           if (!r) throw new Error('Не удалось создать заказ')
@@ -353,27 +352,19 @@ const [courierId, setCourierId] = useState<number | null>(null)
             <FormLabel sx={{ mb: 1 }}>Выберите курьера</FormLabel>
 
             <Select
-              value={courierId}
-              onChange={(e) => {
-                const v = e.target.value
-                setCourierId(v === '' ? '' : Number(v))
+              value={courierId === null ? '' : String(courierId)}
+              onChange={(e: SelectChangeEvent<string>) => {
+                const v = e.target.value // всегда string
+                setCourierId(v === '' ? null : Number(v))
               }}
-              displayEmpty
-              disabled={couriersLoading}
             >
               <MenuItem value="">
-                <em>
-                  {couriersLoading
-                    ? 'Загрузка курьеров...'
-                    : couriers.length === 0
-                      ? 'Курьеров нет'
-                      : 'Не выбран'}
-                </em>
+                <em>Не выбран</em>
               </MenuItem>
 
               {couriers.map((c) => (
-                <MenuItem key={c.id} value={c.id}>
-                  #{c.id} — {c.name} ({c.email})
+                <MenuItem key={c.id} value={String(c.id)}>
+                  #{c.id} — {c.name}
                 </MenuItem>
               ))}
             </Select>

@@ -1,102 +1,61 @@
 import * as React from 'react'
 import { Box, Button, Chip, Paper, Stack, Typography } from '@mui/material'
-import type { Purchase, User } from '../types'
+import type { Purchase } from '../types'
+import {
+  getPurchases,
+  markPurchaseDelivered,
+  markPurchasePlaced,
+} from '../http/API'
+import { toast } from 'react-toastify'
+import { useUser } from '../context/user/useUser'
 
-const currentCourier: User = {
-  id: 10,
-  name: 'Курьер Аскар',
-  role: 'COURIER',
-  phone: '+77011111111',
-  email: 'askar@example.com',
-}
-
-const mockCourierPurchases: Purchase[] = [
-  {
-    id: 1,
-    user_id: 1,
-    product_id: 1,
-    date_buy: '2025-10-01T12:00:00Z',
-    date_send: '2025-10-02T10:00:00Z',
-    delivery_type: 'COURIER',
-    courier_id: 10,
-    product: {
-      id: 1,
-      name: 'Кроссовки',
-      cost: 45000,
-      length: 30,
-      width: 20,
-      height: 12,
-      weight: 0.8,
-    },
-    buyer: {
-      id: 1,
-      name: 'Покупатель 1',
-      role: 'BUYER',
-      phone: '+77030000001',
-      email: 'client1@example.com',
-    },
-  },
-  {
-    id: 2,
-    user_id: 2,
-    product_id: 2,
-    date_buy: '2025-10-02T10:00:00Z',
-    date_send: '2025-10-03T09:00:00Z',
-    delivery_type: 'POSTOMAT',
-    courier_id: 10,
-    postomat_id: 1,
-    postomat_slot: 5,
-    product: {
-      id: 2,
-      name: 'Наушники',
-      cost: 25000,
-      length: 15,
-      width: 15,
-      height: 10,
-      weight: 0.3,
-    },
-    postomat: { id: 1, adress: 'Постамат ТЦ «Mega»', lat: 49.97, lon: 82.61 },
-  },
-]
-
-function isFinished(p: Purchase) {
+function isFinishedForCourier(p: any) {
+  if (p.delivery_type === 'COURIER' && p.courier_mode === 'POSTOMAT') {
+    return Boolean(p.date_send)
+  }
   return Boolean(p.date_receive)
 }
 
 export default function CourierPage() {
-  const [purchases, setPurchases] =
-    React.useState<Purchase[]>(mockCourierPurchases)
+  const { user } = useUser()
+  const [purchases, setPurchases] = React.useState<Purchase[]>([])
+  const [loading, setLoading] = React.useState(false)
 
-  const active = purchases.filter((p) => !isFinished(p))
-  const finished = purchases.filter((p) => isFinished(p))
+  const load = React.useCallback(async () => {
+    try {
+      setLoading(true)
+      const r = await getPurchases()
+      if (r?.purchases) setPurchases(r.purchases)
+    } catch (e) {
+      console.log(e)
+      toast.error('Не удалось загрузить доставки')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
 
-  const handleDeliveredToClient = (purchaseId: number) => {
-    const now = new Date().toISOString()
-    setPurchases((prev) =>
-      prev.map((p) =>
-        p.id === purchaseId
-          ? {
-              ...p,
-              date_receive: now,
-            }
-          : p
-      )
-    )
+  React.useEffect(() => {
+    load()
+  }, [load])
+
+  const active = purchases.filter((p: any) => !isFinishedForCourier(p))
+  const finished = purchases.filter((p: any) => isFinishedForCourier(p))
+
+  const label = (p: any) => {
+    if (p.delivery_type !== 'COURIER') return 'Не курьерская'
+    return p.courier_mode === 'POSTOMAT'
+      ? 'Курьером в постомат'
+      : 'Доставка до двери'
   }
 
-  const handlePlacedToPostomat = (purchaseId: number) => {
-    const now = new Date().toISOString()
-    setPurchases((prev) =>
-      prev.map((p) =>
-        p.id === purchaseId
-          ? {
-              ...p,
-              date_send: p.date_send ?? now,
-              date_receive: now,
-            }
-          : p
-      )
-    )
+  const handleDeliveredToClient = async (id: number) => {
+    const r = await markPurchaseDelivered(id)
+    if (r) await load()
+  }
+
+  const handlePlacedToPostomat = async (id: number) => {
+    const r = await markPurchasePlaced(id)
+    if (r) await load()
   }
 
   return (
@@ -122,8 +81,10 @@ export default function CourierPage() {
         <Typography variant="h5" sx={{ mb: 2, fontWeight: 600 }}>
           Интерфейс курьера
         </Typography>
+
         <Typography variant="body2" sx={{ mb: 3, color: 'text.secondary' }}>
-          Текущий курьер: {currentCourier.name}
+          Текущий курьер: {user.name || user.email}{' '}
+          {loading ? '(загрузка...)' : ''}
         </Typography>
 
         <Typography variant="h6" sx={{ mb: 1.5 }}>
@@ -138,7 +99,7 @@ export default function CourierPage() {
 
         {active.length > 0 && (
           <Stack spacing={1.5} sx={{ mb: 3 }}>
-            {active.map((p) => (
+            {active.map((p: any) => (
               <Paper
                 key={p.id}
                 sx={{
@@ -160,11 +121,7 @@ export default function CourierPage() {
                   </Typography>
                   <Chip
                     size="small"
-                    label={
-                      p.delivery_type === 'COURIER'
-                        ? 'Доставка до двери'
-                        : 'Доставка в постамат'
-                    }
+                    label={label(p)}
                     color="primary"
                     variant="outlined"
                   />
@@ -177,14 +134,14 @@ export default function CourierPage() {
                   </Typography>
                 )}
 
-                {p.delivery_type === 'POSTOMAT' && p.postomat && (
+                {p.courier_mode === 'POSTOMAT' && p.postomat && (
                   <Typography variant="body2" color="text.secondary">
                     Постамат: {p.postomat.adress}
                   </Typography>
                 )}
 
                 <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-                  {p.delivery_type === 'COURIER' && (
+                  {p.courier_mode !== 'POSTOMAT' && (
                     <Button
                       variant="contained"
                       sx={{ bgcolor: '#6f2dbd' }}
@@ -193,7 +150,8 @@ export default function CourierPage() {
                       Доставлено клиенту
                     </Button>
                   )}
-                  {p.delivery_type === 'POSTOMAT' && (
+
+                  {p.courier_mode === 'POSTOMAT' && (
                     <Button
                       variant="contained"
                       sx={{ bgcolor: '#6f2dbd' }}
@@ -220,7 +178,7 @@ export default function CourierPage() {
 
         {finished.length > 0 && (
           <Stack spacing={1.5}>
-            {finished.map((p) => (
+            {finished.map((p: any) => (
               <Paper
                 key={p.id}
                 sx={{
@@ -247,14 +205,16 @@ export default function CourierPage() {
                     variant="outlined"
                   />
                 </Stack>
-                {p.delivery_type === 'COURIER' && (
+
+                {p.courier_mode === 'POSTOMAT' && p.postomat && (
                   <Typography variant="body2" color="text.secondary">
-                    Доставлено клиенту
+                    Положено в постамат: {p.postomat.adress}
                   </Typography>
                 )}
-                {p.delivery_type === 'POSTOMAT' && p.postomat && (
+
+                {p.courier_mode !== 'POSTOMAT' && (
                   <Typography variant="body2" color="text.secondary">
-                    Доставлено в постамат: {p.postomat.adress}
+                    Доставлено клиенту
                   </Typography>
                 )}
               </Paper>

@@ -8,7 +8,7 @@ import cfg from './config.js'
 import router from './routes/index.js'
 import sequelize from './db/db.js'
 import { sio_middleware, sio_chat } from './modules/sio/index.js'
-import bot from './modules/telegram/index.js'
+// import bot from './modules/telegram/index.js'
 import './modules/cron/index.js'
 import { generateProducts } from './db/generateProducts.js'
 

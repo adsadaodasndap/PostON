@@ -3,13 +3,27 @@ import { Branch, Postomat, Product, Purchase, Slot, User } from '../db/models'
 import unexpectedError from '../helpers/unexpectedError'
 import bot from '../modules/telegram'
 import { Request } from '../types/Request'
+import type { DeliveryType, CourierMode } from '../db/models'
+
+const isDeliveryType = (v: string): v is DeliveryType =>
+  v === 'BRANCH' || v === 'POSTOMAT' || v === 'COURIER'
+
+const isCourierMode = (v: string): v is CourierMode =>
+  v === 'HOME' || v === 'POSTOMAT'
 
 export const createPurchase = async (req: Request, res: Response) => {
   try {
     if (!req.user)
       return res.status(401).json({ message: 'authorization_required' })
 
-    const { productId, deliveryType, branchId, postomatId } = req.body
+    const {
+      productId,
+      deliveryType,
+      branchId,
+      // postomatId,
+      courierId,
+      courierMode,
+    } = req.body
 
     if (!productId || !deliveryType) {
       return res
@@ -24,8 +38,13 @@ export const createPurchase = async (req: Request, res: Response) => {
     let postomat_id: number | null = null
     let postomat_slot: number | null = null
     let courier_id: number | null = null
+    let courier_mode: CourierMode | null = null
 
-    const dt: string = String(deliveryType).toUpperCase()
+    const dtRaw = String(deliveryType).toUpperCase()
+    if (!isDeliveryType(dtRaw)) {
+      return res.status(400).json({ message: 'Некорректный тип доставки' })
+    }
+    const dt: DeliveryType = dtRaw
 
     if (dt === 'BRANCH') {
       if (!branchId) {
@@ -34,47 +53,29 @@ export const createPurchase = async (req: Request, res: Response) => {
           .json({ message: 'Необходимо выбрать отделение связи' })
       }
       branch_id = Number(branchId)
-    } else if (dt === 'POSTOMAT') {
-      if (!postomatId) {
-        return res.status(400).json({ message: 'Необходимо выбрать постомат' })
-      }
-      postomat_id = Number(postomatId)
-
-      const slots = await Slot.findAll({ where: { postomat_id } })
-
-      let foundSlot: Slot | null = null
-
-      for (const slot of slots) {
-        const sizeOk =
-          product.length <= slot.length &&
-          product.width <= slot.width &&
-          product.height <= slot.height
-
-        if (!sizeOk) continue
-
-        const activePurchase = await Purchase.findOne({
-          where: {
-            postomat_slot: slot.id,
-            date_receive: null,
-          },
-        })
-
-        if (!activePurchase) {
-          foundSlot = slot
-          break
-        }
-      }
-
-      if (!foundSlot) {
-        return res.status(409).json({
-          message:
-            'Нет доступной ячейки подходящего размера в выбранном постомате',
-        })
-      }
-
-      postomat_slot = foundSlot.id
     } else if (dt === 'COURIER') {
-      courier_id = null
+      if (!courierId) {
+        return res.status(400).json({ message: 'Необходимо выбрать курьера' })
+      }
+
+      const courier = await User.findByPk(Number(courierId))
+      if (!courier || courier.role !== 'COURIER') {
+        return res.status(400).json({ message: 'Выбранный курьер не найден' })
+      }
+
+      const cmRaw = String(courierMode || 'HOME').toUpperCase()
+      if (!isCourierMode(cmRaw)) {
+        return res
+          .status(400)
+          .json({ message: 'Некорректный режим курьерской доставки' })
+      }
+
+      courier_id = courier.id
+      courier_mode = cmRaw
+
+      branch_id = null
+      postomat_id = null
+      postomat_slot = null
     } else {
       return res.status(400).json({ message: 'Некорректный тип доставки' })
     }
@@ -88,6 +89,8 @@ export const createPurchase = async (req: Request, res: Response) => {
       branch_id,
       postomat_id,
       postomat_slot,
+
+      courier_mode,
 
       date_buy: new Date(),
       date_send: dt === 'COURIER' ? null : new Date(),
@@ -271,6 +274,22 @@ export const markReceived = async (req: Request, res: Response) => {
     )
 
     return res.json({ message: 'Посылка отмечена полученной' })
+  } catch (e) {
+    return unexpectedError(res, e)
+  }
+}
+export const getCouriers = async (req: Request, res: Response) => {
+  try {
+    if (!req.user)
+      return res.status(401).json({ message: 'authorization_required' })
+
+    const couriers = await User.findAll({
+      where: { role: 'COURIER' },
+      attributes: ['id', 'name', 'email'],
+      order: [['id', 'ASC']],
+    })
+
+    return res.json({ couriers })
   } catch (e) {
     return unexpectedError(res, e)
   }

@@ -16,6 +16,7 @@ import {
 } from 'sequelize-typescript'
 
 export type UserRole = 'ADMIN' | 'SELLER' | 'BUYER' | 'COURIER' | 'POSTAMAT'
+export type CourierMode = 'HOME' | 'POSTOMAT'
 
 interface UserCreationAttributes {
   name: string
@@ -261,6 +262,7 @@ interface PurchaseCreationAttributes {
   postomat_id?: number | null
   courier_id?: number | null
   postomat_slot?: number | null
+  courier_mode?: CourierMode | null
 }
 
 @Table({ timestamps: true })
@@ -295,6 +297,10 @@ export class Purchase extends Model<Purchase, PurchaseCreationAttributes> {
   @Column(DataType.ENUM('BRANCH', 'POSTOMAT', 'COURIER'))
   declare delivery_type: DeliveryType
 
+  @Default('HOME')
+  @AllowNull(false)
+  @Column(DataType.ENUM('HOME', 'POSTOMAT'))
+  declare courier_mode: CourierMode | null
   @AllowNull(true)
   @ForeignKey(() => Branch)
   @Column(DataType.INTEGER)

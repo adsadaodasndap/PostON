@@ -424,7 +424,7 @@ export default function TopBar() {
                     <Box>
                       <Typography fontWeight={700}>{item.name}</Typography>
                       <Typography variant="body2" color="text.secondary">
-                        {item.price.toFixed(2)} ₸
+                        {Number(item.price).toFixed(2)} ₸
                       </Typography>
                     </Box>
 

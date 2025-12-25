@@ -142,15 +142,33 @@ export const confirmEmail = async (secret: string) => {
   }
 }
 
-export const getProducts = async () => {
+export type ProductDTO = {
+  id: number
+  name: string
+  description: string
+  cost: number | string
+  image?: string
+}
+
+export type ProductsResponse = {
+  products: ProductDTO[]
+}
+
+export const getProducts = async (): Promise<ProductsResponse | undefined> => {
   try {
-    const res = await $host.get('auth/products')
-    return res.data
-  } catch (e: any) {
-    if (e.response?.data?.message) toast.error(e.response.data.message)
-    console.log(e)
+    const res = await $host.get<ProductsResponse>('auth/products')
+
+    return {
+      products: res.data.products.map((p) => ({
+        ...p,
+        cost: Number(p.cost), // 🔴 КЛЮЧЕВОЙ ФИКС
+      })),
+    }
+  } catch (error: unknown) {
+    handleApiError(error)
   }
 }
+
 export const deleteProduct = async (id: number) => {
   try {
     const res = await $host.delete('user/products', { params: { id } })

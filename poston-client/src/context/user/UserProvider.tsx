@@ -14,7 +14,6 @@ export interface UserData {
   photoURL: string
   tg_id: string | null
   active?: boolean
-  // expired_password?: boolean
 }
 
 const noUser: UserData = {
@@ -31,29 +30,51 @@ interface UserProviderProps {
 }
 
 export const UserProvider = ({ children }: UserProviderProps) => {
-  const loadCart = () => {
+  const loadCart = (): CartItem[] => {
     const c = localStorage.cart
+    if (!c) return []
 
-    if (c) {
-      try {
-        return JSON.parse(c)
-      } catch (e) {
-        console.log(e)
-      }
+    try {
+      const parsed = JSON.parse(c) as unknown
+      if (!Array.isArray(parsed)) return []
+
+      return parsed
+        .map((it) => {
+          const obj = it as Partial<CartItem>
+
+          if (typeof obj.id !== 'number') return null
+          if (typeof obj.name !== 'string') return null
+
+          const rawPrice = (obj as { price?: unknown }).price
+          const price = Number(rawPrice)
+          const amount =
+            typeof obj.amount === 'number' && obj.amount > 0 ? obj.amount : 1
+
+          return {
+            id: obj.id,
+            name: obj.name,
+            price: Number.isFinite(price) ? price : 0,
+            amount,
+          }
+        })
+        .filter((v): v is CartItem => v !== null)
+    } catch (e) {
+      console.log(e)
+      return []
     }
   }
+
   const [user, setUser] = useState<UserData>(noUser)
-  const [cart, setCart] = useState<CartItem[]>(loadCart() || [])
+  const [cart, setCart] = useState<CartItem[]>(loadCart())
   const [cartOpen, setCartOpen] = useState(false)
 
   const [sio, setSIO] = useState<Socket | null>(null)
   const navigate = useNavigate()
 
   const login = (userData: UserData, token: string) => {
-    if (token) {
-      setUser(userData)
-      localStorage.token = token
-    }
+    if (!token) return
+    setUser(userData)
+    localStorage.token = token
   }
 
   useEffect(() => {
@@ -72,6 +93,7 @@ export const UserProvider = ({ children }: UserProviderProps) => {
     } else {
       localStorage.removeItem('token')
     }
+
     setUser(noUser)
     navigate('/')
   }
@@ -90,25 +112,28 @@ export const UserProvider = ({ children }: UserProviderProps) => {
 
   useEffect(() => {
     requestNotificationPermission()
-    if (localStorage.token) {
-      verify().then((resv) => {
-        if (resv) {
-          login(resv.user, resv.token)
-          const socket = io(baseWSURL, {
-            path: '/ws',
-            transports: ['websocket'],
-            auth: {
-              token: resv.token,
-            },
-          })
-          setSIO(socket)
-          if (resv.user.role === 'POSTAMAT') navigate('/postamat')
-        } else {
-          navigate('/')
-          logout()
-        }
+
+    if (!localStorage.token) return
+
+    verify().then((resv) => {
+      if (!resv) {
+        navigate('/')
+        logout()
+        return
+      }
+
+      login(resv.user, resv.token)
+
+      const socket = io(baseWSURL, {
+        path: '/ws',
+        transports: ['websocket'],
+        auth: { token: resv.token },
       })
-    }
+
+      setSIO(socket)
+
+      if (resv.user.role === 'POSTAMAT') navigate('/postamat')
+    })
   }, [])
 
   return (

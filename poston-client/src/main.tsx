@@ -62,7 +62,12 @@ const router = createBrowserRouter([
       },
       {
         path: '/postomat',
-        element: <WithAuth c={<PostomatPage />} roles={['POSTAMAT']} />,
+        element: (
+          <WithAuth
+            c={<PostomatPage />}
+            roles={['ADMIN', 'BUYER', 'COURIER', 'POSTAMAT']}
+          />
+        ),
       },
       {
         path: '/admin',

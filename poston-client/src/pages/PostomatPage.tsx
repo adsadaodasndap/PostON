@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Box,
   Button,
@@ -11,6 +11,10 @@ import {
 } from '@mui/material'
 import { toast } from 'react-toastify'
 import { $host } from '../http/API'
+import { useUser } from '../context/user/useUser'
+import PostomatGrid, {
+  type SlotView,
+} from '../components/postomat/PostomatGrid'
 
 type SlotState = { id: number; busy: boolean }
 type PostomatDTO = { id: number; adress: string; lat?: number; lon?: number }
@@ -28,20 +32,75 @@ type SlotsResp = {
   slots: SlotState[]
 }
 
+type ClientScanResp = {
+  purchaseId: number
+  postomatId: number
+  slotId: number
+  status: string
+}
+
 export default function PostomatPage() {
+  const { user } = useUser()
   const [loading, setLoading] = useState(true)
   const [postomat, setPostomat] = useState<PostomatDTO | null>(null)
   const [slots, setSlots] = useState<SlotState[]>([])
 
+  const [activeMode, setActiveMode] = useState<'COURIER' | 'BUYER' | 'MONITOR'>(
+    () => {
+      if (user.role === 'COURIER') return 'COURIER'
+      if (user.role === 'BUYER') return 'BUYER'
+      return 'MONITOR'
+    }
+  )
+
   const [qr, setQr] = useState('')
+
+  // courier state
   const [purchaseId, setPurchaseId] = useState<number | null>(null)
   const [reservedSlotId, setReservedSlotId] = useState<number | null>(null)
   const [doorOpened, setDoorOpened] = useState(false)
-  const [actionLoading, setActionLoading] = useState(false)
 
-  const grid = useMemo(() => {
-    return slots
-  }, [slots])
+  // buyer state
+  const [clientSlotId, setClientSlotId] = useState<number | null>(null)
+  const [clientDoorOpened, setClientDoorOpened] = useState(false)
+  const [clientPurchaseId, setClientPurchaseId] = useState<number | null>(null)
+
+  const [actionLoading, setActionLoading] = useState(false)
+  const pollRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    if (user.role === 'COURIER') setActiveMode('COURIER')
+    else if (user.role === 'BUYER') setActiveMode('BUYER')
+    else setActiveMode('MONITOR')
+  }, [user.role])
+
+  const grid: SlotView[] = useMemo(() => {
+    // BUYER не имеет доступа к /postomat/slots по текущему RBAC backend,
+    // поэтому рисуем 20 ячеек как UNKNOWN и подсвечиваем только свою.
+    if (activeMode === 'BUYER') {
+      const total = 20
+      return Array.from({ length: total }, (_, idx) => {
+        const id = idx + 1
+        const isTarget = clientSlotId === id
+        return {
+          id,
+          label: id,
+          state: isTarget ? 'TARGET' : 'UNKNOWN',
+          disabled: !isTarget,
+        }
+      })
+    }
+
+    // COURIER / MONITOR: реальные состояния слотов
+    return slots.map((s, idx) => {
+      const isReserved = reservedSlotId === s.id
+      return {
+        id: s.id,
+        label: idx + 1,
+        state: isReserved ? 'RESERVED' : s.busy ? 'BUSY' : 'FREE',
+      }
+    })
+  }, [activeMode, slots, reservedSlotId, clientSlotId])
 
   const loadSlots = async () => {
     try {
@@ -51,21 +110,31 @@ export default function PostomatPage() {
       setSlots(data.slots)
     } catch (e) {
       console.log(e)
-      toast.error('Не удалось загрузить постамат')
+      if (activeMode !== 'BUYER') toast.error('Не удалось загрузить постамат')
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    loadSlots()
-  }, [])
+    if (activeMode !== 'BUYER') loadSlots()
+  }, [activeMode])
 
-  const courierScan = async () => {
-    if (!qr.trim()) {
-      toast.error('Введи QR')
-      return
+  useEffect(() => {
+    // Пуллинг только для COURIER/MONITOR
+    if (activeMode === 'BUYER') return
+    if (pollRef.current) window.clearInterval(pollRef.current)
+    pollRef.current = window.setInterval(() => {
+      if (!actionLoading) loadSlots()
+    }, 5000)
+    return () => {
+      if (pollRef.current) window.clearInterval(pollRef.current)
     }
+  }, [activeMode, actionLoading])
+
+  // Courier flow
+  const courierScan = async () => {
+    if (!qr.trim()) return toast.error('Введи QR')
     try {
       setActionLoading(true)
       const { data } = await $host.post<CourierScanResp>(
@@ -74,14 +143,12 @@ export default function PostomatPage() {
           qr: qr.trim(),
         }
       )
-
       setPurchaseId(data.purchaseId)
       setReservedSlotId(data.reservedSlotId)
       setDoorOpened(false)
       setSlots(data.slots)
-
       toast.success(`Ячейка #${data.reservedSlotId} зарезервирована`)
-    } catch (e: any) {
+    } catch (e) {
       console.log(e)
       toast.error('Скан не прошёл')
     } finally {
@@ -139,6 +206,77 @@ export default function PostomatPage() {
     }
   }
 
+  // Buyer flow
+  const clientScan = async () => {
+    if (!qr.trim()) return toast.error('Введи QR')
+    try {
+      setActionLoading(true)
+      const { data } = await $host.post<ClientScanResp>(
+        'postomat/client/scan',
+        {
+          qr: qr.trim(),
+        }
+      )
+      setClientPurchaseId(data.purchaseId)
+      setClientSlotId(data.slotId)
+      setClientDoorOpened(false)
+      toast.success(`Твоя ячейка: #${data.slotId}`)
+    } catch (e) {
+      console.log(e)
+      toast.error('Скан не прошёл')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const clientOpenDoor = async () => {
+    if (!clientPurchaseId) return toast.error('Сначала скан QR')
+    try {
+      setActionLoading(true)
+      await $host.post('postomat/client/open', { purchaseId: clientPurchaseId })
+      setClientDoorOpened(true)
+      toast.success('Дверца открыта')
+    } catch (e) {
+      console.log(e)
+      toast.error('Не удалось открыть дверцу')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const clientTake = async () => {
+    if (!clientPurchaseId) return toast.error('Сначала скан QR')
+    try {
+      setActionLoading(true)
+      await $host.post('postomat/client/take', { purchaseId: clientPurchaseId })
+      toast.success('Посылка получена')
+    } catch (e) {
+      console.log(e)
+      toast.error('Не удалось забрать посылку')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const clientCloseDoor = async () => {
+    if (!clientPurchaseId) return toast.error('Сначала скан QR')
+    try {
+      setActionLoading(true)
+      await $host.post('postomat/client/close', {
+        purchaseId: clientPurchaseId,
+      })
+      setClientDoorOpened(false)
+      setClientPurchaseId(null)
+      setClientSlotId(null)
+      toast.success('Дверца закрыта')
+    } catch (e) {
+      console.log(e)
+      toast.error('Не удалось закрыть дверцу')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
   return (
     <Box
       sx={{
@@ -175,7 +313,11 @@ export default function PostomatPage() {
             </Typography>
           </Box>
 
-          <Button variant="outlined" onClick={loadSlots} disabled={loading}>
+          <Button
+            variant="outlined"
+            onClick={loadSlots}
+            disabled={loading || activeMode === 'BUYER'}
+          >
             Обновить
           </Button>
         </Stack>
@@ -194,71 +336,141 @@ export default function PostomatPage() {
             }}
           >
             <Typography fontWeight={700} sx={{ mb: 1 }}>
-              Сценарий курьера (демо)
+              Управление
             </Typography>
 
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              1. Курьер вводит QR → 2. ему резервируется свободная ячейка → 3.
-              открыть → положить → закрыть.
+              Роль: {user.role ?? '—'}. Режим: {activeMode}.
             </Typography>
 
             <Stack spacing={1.5}>
               <TextField
-                label="QR (courier_qr)"
+                label={
+                  activeMode === 'BUYER' ? 'QR (client_qr)' : 'QR (courier_qr)'
+                }
                 value={qr}
                 onChange={(e) => setQr(e.target.value)}
                 size="small"
                 fullWidth
               />
 
-              <Button
-                variant="contained"
-                onClick={courierScan}
-                disabled={actionLoading}
-              >
-                Сканировать QR
-              </Button>
+              {activeMode === 'COURIER' && (
+                <Button
+                  variant="contained"
+                  onClick={courierScan}
+                  disabled={actionLoading}
+                >
+                  Сканировать QR
+                </Button>
+              )}
+
+              {activeMode === 'BUYER' && (
+                <Button
+                  variant="contained"
+                  onClick={clientScan}
+                  disabled={actionLoading}
+                >
+                  Сканировать QR
+                </Button>
+              )}
 
               <Stack direction="row" spacing={1} alignItems="center">
                 <Chip
                   label={
-                    purchaseId ? `purchaseId: ${purchaseId}` : 'purchaseId: —'
+                    activeMode === 'BUYER'
+                      ? clientPurchaseId
+                        ? `purchaseId: ${clientPurchaseId}`
+                        : 'purchaseId: —'
+                      : purchaseId
+                        ? `purchaseId: ${purchaseId}`
+                        : 'purchaseId: —'
                   }
                   variant="outlined"
                 />
                 <Chip
                   label={
-                    reservedSlotId ? `ячейка: #${reservedSlotId}` : 'ячейка: —'
+                    activeMode === 'BUYER'
+                      ? clientSlotId
+                        ? `ячейка: #${clientSlotId}`
+                        : 'ячейка: —'
+                      : reservedSlotId
+                        ? `ячейка: #${reservedSlotId}`
+                        : 'ячейка: —'
                   }
-                  color={reservedSlotId ? 'primary' : 'default'}
+                  color={
+                    activeMode === 'BUYER'
+                      ? clientSlotId
+                        ? 'primary'
+                        : 'default'
+                      : reservedSlotId
+                        ? 'primary'
+                        : 'default'
+                  }
                   variant="outlined"
                 />
               </Stack>
 
-              <Button
-                variant="outlined"
-                onClick={courierOpenDoor}
-                disabled={actionLoading || !purchaseId || doorOpened}
-              >
-                Открыть дверцу
-              </Button>
+              {activeMode === 'COURIER' && (
+                <>
+                  <Button
+                    variant="outlined"
+                    onClick={courierOpenDoor}
+                    disabled={actionLoading || !purchaseId || doorOpened}
+                  >
+                    Открыть дверцу
+                  </Button>
 
-              <Button
-                variant="contained"
-                onClick={courierPlace}
-                disabled={actionLoading || !purchaseId || !doorOpened}
-              >
-                Положить
-              </Button>
+                  <Button
+                    variant="contained"
+                    onClick={courierPlace}
+                    disabled={actionLoading || !purchaseId || !doorOpened}
+                  >
+                    Положить
+                  </Button>
 
-              <Button
-                color="warning"
-                variant="contained"
-                onClick={courierCloseDoor}
-                disabled={actionLoading || !purchaseId}
-              >
-                Закрыть дверцу
-              </Button>
+                  <Button
+                    color="warning"
+                    variant="contained"
+                    onClick={courierCloseDoor}
+                    disabled={actionLoading || !purchaseId}
+                  >
+                    Закрыть дверцу
+                  </Button>
+                </>
+              )}
+
+              {activeMode === 'BUYER' && (
+                <>
+                  <Button
+                    variant="outlined"
+                    onClick={clientOpenDoor}
+                    disabled={
+                      actionLoading || !clientPurchaseId || clientDoorOpened
+                    }
+                  >
+                    Открыть дверцу
+                  </Button>
+
+                  <Button
+                    variant="contained"
+                    onClick={clientTake}
+                    disabled={
+                      actionLoading || !clientPurchaseId || !clientDoorOpened
+                    }
+                  >
+                    Забрать
+                  </Button>
+
+                  <Button
+                    color="warning"
+                    variant="contained"
+                    onClick={clientCloseDoor}
+                    disabled={actionLoading || !clientPurchaseId}
+                  >
+                    Закрыть дверцу
+                  </Button>
+                </>
+              )}
 
               {actionLoading && (
                 <Stack direction="row" spacing={1} alignItems="center">
@@ -269,9 +481,15 @@ export default function PostomatPage() {
                 </Stack>
               )}
 
-              {doorOpened && (
+              {activeMode === 'COURIER' && doorOpened && (
                 <Typography variant="body2" color="error">
                   Дверца открыта. Чтобы уйти — нужно закрыть.
+                </Typography>
+              )}
+
+              {activeMode === 'BUYER' && clientDoorOpened && (
+                <Typography variant="body2" color="error">
+                  Дверца открыта. Чтобы завершить — нужно закрыть.
                 </Typography>
               )}
             </Stack>
@@ -289,7 +507,7 @@ export default function PostomatPage() {
               Ячейки (1–20)
             </Typography>
 
-            <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+            <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: 'wrap' }}>
               <Chip
                 label="Свободно"
                 sx={{ bgcolor: '#2e7d32', color: 'white' }}
@@ -302,70 +520,19 @@ export default function PostomatPage() {
                 label="Резерв"
                 sx={{ bgcolor: '#ed6c02', color: 'white' }}
               />
+              <Chip label="Ваша" sx={{ bgcolor: '#1976d2', color: 'white' }} />
+              <Chip
+                label="Недоступно"
+                sx={{ bgcolor: '#9e9e9e', color: 'white' }}
+              />
             </Stack>
 
-            {loading ? (
+            {loading && activeMode !== 'BUYER' ? (
               <Stack alignItems="center" sx={{ py: 6 }}>
                 <CircularProgress />
               </Stack>
             ) : (
-              <Box
-                sx={{
-                  display: 'grid',
-                  gridTemplateColumns: {
-                    xs: 'repeat(4, 1fr)',
-                    sm: 'repeat(5, 1fr)',
-                  },
-                  gap: 1.5,
-                }}
-              >
-                {grid.map((s, i) => {
-                  const isReserved = reservedSlotId === s.id
-                  const bg = isReserved
-                    ? '#ed6c02'
-                    : s.busy
-                      ? '#d32f2f'
-                      : '#2e7d32'
-
-                  return (
-                    <Box
-                      key={s.id}
-                      sx={{
-                        height: 78,
-                        borderRadius: 1.5,
-                        bgcolor: bg,
-                        color: 'white',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: 800,
-                        position: 'relative',
-                        userSelect: 'none',
-                      }}
-                      title={
-                        isReserved
-                          ? 'Зарезервировано под текущую операцию'
-                          : s.busy
-                            ? 'Занято'
-                            : 'Свободно'
-                      }
-                    >
-                      {i + 1}
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          position: 'absolute',
-                          bottom: 6,
-                          opacity: 0.9,
-                          fontWeight: 600,
-                        }}
-                      >
-                        {isReserved ? 'RESERVE' : s.busy ? 'BUSY' : 'FREE'}
-                      </Typography>
-                    </Box>
-                  )
-                })}
-              </Box>
+              <PostomatGrid slots={grid} />
             )}
           </Paper>
         </Stack>

@@ -8,11 +8,11 @@ import {
   Typography,
 } from '@mui/material'
 import { LoadingButton } from '@mui/lab'
-import { useUser } from '../../../../web-course-2025/test-client-v2/src/context/user/useUser'
 import { useEffect, useState } from 'react'
-import { confirmEmail, sendEmail } from '../http/API'
 import { useSearchParams } from 'react-router-dom'
 import HomeButton from '../components/HomeButton'
+import { useUser } from '../context/user/useUser'
+import { confirmEmail, sendEmail } from '../http/API'
 
 const Email = () => {
   const { user, setUser } = useUser()
@@ -23,7 +23,7 @@ const Email = () => {
     setSending(true)
     sendEmail()
       .catch(() => {
-        // обработка ошибки при необходимости
+        // toast внутри API.ts, тут можно ничего не делать
       })
       .finally(() => setSending(false))
   }
@@ -32,30 +32,44 @@ const Email = () => {
     const secret = searchParams.get('secret')
     if (!secret) return
 
-    confirmEmail(secret).then((isConfirmed: boolean) => {
-      if (!isConfirmed) return
-      setUser((prev) => ({ ...prev, active: true }))
+    confirmEmail(secret).then((res) => {
+      // confirmEmail в API.ts обычно возвращает объект { message?: string } | undefined
+      // Логика: если запрос успешный и вернулся ответ — считаем подтвержденным
+      if (!res) return
+
+      setUser((prev) => ({
+        ...prev,
+        active: true,
+      }))
     })
   }, [searchParams, setUser])
 
+  const isActive = Boolean(user?.active)
+  const email = user?.email ?? ''
+
   return (
     <>
-      <Paper>
+      <Paper sx={{ p: 2 }}>
         <HomeButton />
-        <Typography>Почта подтверждена!</Typography>
+        <Typography sx={{ mt: 1 }}>
+          {isActive ? 'Почта подтверждена!' : 'Требуется подтверждение почты'}
+        </Typography>
       </Paper>
-      <Dialog open={!user.active}>
+
+      <Dialog open={!isActive}>
         <DialogTitle>Подтвердите вашу почту</DialogTitle>
         <DialogContent>
           <DialogContentText sx={{ mb: 5 }}>
-            Сервис PEXpert будет доступен Вам после подтверждения почты.
-            Пожалуйста, проверьте входящие письма по адресу {user.email} и
-            перейдите по ссылке в нашем письме подтверждения.
+            Сервис будет доступен после подтверждения почты. Проверьте входящие
+            письма по адресу {email} и перейдите по ссылке в письме
+            подтверждения.
           </DialogContentText>
+
           <DialogContentText>
-            Если письма нет в Вашем ящике, проверьте папку &quot;Спам&quot; или
-            запросите повторную отправку письма.
+            Если письма нет, проверьте папку &quot;Спам&quot; или запросите
+            повторную отправку.
           </DialogContentText>
+
           <DialogActions>
             <LoadingButton loading={sending} onClick={submit}>
               Отправить письмо заново

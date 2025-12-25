@@ -11,17 +11,17 @@ import {
   Typography,
 } from '@mui/material'
 import { Link } from 'react-router-dom'
+import { useState } from 'react'
 
-import { QrCode } from '@mui/icons-material'
+import QrCodeIcon from '@mui/icons-material/QrCode'
 import AssistantIcon from '@mui/icons-material/Assistant'
 import EmailIcon from '@mui/icons-material/Email'
 import LanguageIcon from '@mui/icons-material/Language'
 import MapIcon from '@mui/icons-material/Map'
 import TelegramIcon from '@mui/icons-material/Telegram'
-import { useState } from 'react'
-import GoogleLoginButton from '../../../../web-course-2025/test-client-v2/src/components/GoogleButton'
-import { useUser } from '../../../../web-course-2025/test-client-v2/src/context/user/useUser'
-import { signIn, signUp } from '..//http/API'
+
+import { useUser } from '../context/user/useUser'
+import { signIn, signUp } from '../http/API'
 
 interface TabPanelProps {
   children?: React.ReactNode
@@ -29,174 +29,114 @@ interface TabPanelProps {
   value: number
 }
 
-function CustomTabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props
-
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`simple-tabpanel-${index}`}
-      aria-labelledby={`simple-tab-${index}`}
-      {...other}
-    >
-      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
-    </div>
-  )
+function CustomTabPanel({ children, value, index }: TabPanelProps) {
+  if (value !== index) return null
+  return <Box sx={{ p: 3 }}>{children}</Box>
 }
 
 const pages = [
-  {
-    name: 'Telegram Bot',
-    id: '1-telegram',
-    icon: TelegramIcon,
-  },
-  {
-    name: 'Email',
-    id: '2-email',
-    icon: EmailIcon,
-  },
-  {
-    name: 'GPT-модели',
-    id: '3-gpt',
-    icon: AssistantIcon,
-  },
-  {
-    name: 'Карты + Геолокация',
-    id: '4-leaflet',
-    icon: MapIcon,
-  },
-  {
-    name: 'Переводы приложения',
-    id: '5-i18n',
-    icon: LanguageIcon,
-  },
-  // {
-  //   name: 'Notifications API (уведомления)',
-  //   id: '6-notif',
-  //   icon: NotificationsActiveIcon,
-  // },
-  // {
-  //   name: 'Google OAuth',
-  //   id: '7-notif',
-  //   icon: GoogleIcon,
-  // },
-  {
-    name: 'QR-коды',
-    id: '8-qr',
-    icon: QrCode,
-  },
+  { name: 'Telegram Bot', id: '1-telegram', icon: TelegramIcon },
+  { name: 'Email', id: '2-email', icon: EmailIcon },
+  { name: 'GPT-модели', id: '3-gpt', icon: AssistantIcon },
+  { name: 'Карты + Геолокация', id: '4-leaflet', icon: MapIcon },
+  { name: 'Переводы', id: '5-i18n', icon: LanguageIcon },
+  { name: 'QR-коды', id: '8-qr', icon: QrCodeIcon },
 ]
 
 const Menu = () => {
   const { user, login, logout } = useUser()
-  const [firstName, setFirstName] = useState('')
-  const [lastName, setLastName] = useState('')
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-
-  const [value, setValue] = useState(0)
-
-  const submitSignUp = async () => {
-    const res = await signUp(firstName, lastName, email, password)
-    if (res.token) {
-      login(res.user, res.token)
-    }
-  }
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [tab, setTab] = useState(0)
 
   const submitSignIn = async () => {
     const res = await signIn(email, password)
-
-    if (res.token) {
-      login(res.user, res.token)
-    }
+    if (res?.token) login(res.user, res.token)
   }
 
-  const handleChange = (_event: React.SyntheticEvent, newValue: number) => {
-    setValue(newValue)
+  const submitSignUp = async () => {
+    const res = await signUp(firstName, lastName, email, password)
+    if (res?.token) login(res.user, res.token)
   }
 
   return (
-    <Paper sx={{ p: 2 }} component={Stack}>
-      {!user.role ? (
+    <Paper sx={{ p: 2 }} component={Stack} spacing={2}>
+      {!user?.role ? (
         <>
-          <Tabs value={value} onChange={handleChange}>
+          <Tabs value={tab} onChange={(_, v) => setTab(v)}>
             <Tab label="Войти" />
-            <Tab label="Зарегистрироваться" />
+            <Tab label="Регистрация" />
           </Tabs>
-          <CustomTabPanel value={value} index={0}>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault()
-                submitSignIn()
-              }}
-            >
-              <Stack gap={1}>
-                <TextField
-                  label="Email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-                <TextField
-                  label="Пароль"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-                <Button type="submit" variant="contained" fullWidth>
-                  Войти
-                </Button>
-              </Stack>
-            </form>
+
+          <CustomTabPanel value={tab} index={0}>
+            <Stack gap={1}>
+              <TextField
+                label="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <TextField
+                label="Пароль"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <Button variant="contained" onClick={submitSignIn}>
+                Войти
+              </Button>
+            </Stack>
           </CustomTabPanel>
-          <CustomTabPanel value={value} index={1}>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault()
-                submitSignUp()
-              }}
-            >
-              <Stack gap={1}>
-                <TextField
-                  label="Имя"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                />
-                <TextField
-                  label="Фамилия"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                />
-                <TextField
-                  label="Email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                />
-                <TextField
-                  label="Пароль"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-                <Button type="submit" variant="contained" fullWidth>
-                  Зарегистрироваться
-                </Button>
-              </Stack>
-            </form>
+
+          <CustomTabPanel value={tab} index={1}>
+            <Stack gap={1}>
+              <TextField
+                label="Имя"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+              />
+              <TextField
+                label="Фамилия"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+              />
+              <TextField
+                label="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <TextField
+                label="Пароль"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <Button variant="contained" onClick={submitSignUp}>
+                Зарегистрироваться
+              </Button>
+            </Stack>
           </CustomTabPanel>
-          <GoogleLoginButton />
         </>
       ) : (
-        <Stack alignItems={'center'}>
-          <Avatar src={user.photoURL} sx={{ height: 100, width: 100 }} />
-          <Typography variant="h5">{user.email}</Typography>
-          <Typography variant="h6">
-            {user.firstName} {user.lastName}
-          </Typography>
-          <Button onClick={() => logout()}>Выйти из аккаунта</Button>
+        <Stack alignItems="center" spacing={1}>
+          <Avatar sx={{ width: 96, height: 96 }} />
+          <Typography>{user.email}</Typography>
+          <Typography variant="caption">Роль: {user.role}</Typography>
+          <Button onClick={() => logout()}>Выйти</Button>
         </Stack>
       )}
-      <Divider sx={{ my: 2 }} />
+
+      <Divider />
+
       {pages.map((p) => (
-        <Button startIcon={<p.icon />} component={Link} to={'/' + p.id}>
+        <Button
+          key={p.id}
+          startIcon={<p.icon />}
+          component={Link}
+          to={`/${p.id}`}
+        >
           {p.name}
         </Button>
       ))}

@@ -113,8 +113,12 @@ export default function AdminPage() {
     setProdLoading(true)
     try {
       const res = await getProducts()
-      const list = Array.isArray(res) ? res : res?.products
-      if (Array.isArray(list)) setProducts(list)
+
+      if (res?.products) {
+        setProducts(res.products)
+      } else {
+        setProducts([])
+      }
     } finally {
       setProdLoading(false)
     }

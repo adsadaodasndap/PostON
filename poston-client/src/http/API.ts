@@ -2,12 +2,18 @@ import axios, { AxiosError } from 'axios'
 import { toast } from 'react-toastify'
 import { baseURL } from '../config'
 
+/**
+ * Публичные запросы (без токена)
+ */
 const host = axios.create({ baseURL })
 
+/**
+ * Приватные запросы (с токеном)
+ */
 export const $host = axios.create({ baseURL })
 
 $host.interceptors.request.use((config) => {
-  const token = localStorage.token
+  const token = localStorage.token as string | undefined
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -22,13 +28,28 @@ const isApiError = (error: unknown): error is AxiosError<ApiMessageResponse> =>
   axios.isAxiosError(error)
 
 const handleApiError = (error: unknown) => {
-  if (isApiError(error) && error.response?.data?.message) {
-    toast.error(error.response.data.message)
+  if (isApiError(error)) {
+    const msg = error.response?.data?.message
+    if (msg) toast.error(msg)
   }
   console.error(error)
 }
 
 /* ===================== AUTH ===================== */
+
+export type AuthResponse = {
+  message?: string
+  token: string
+  user: {
+    id: number
+    role: 'ADMIN' | 'SELLER' | 'BUYER' | 'COURIER' | 'POSTAMAT'
+    name: string
+    email: string
+    photoURL: string
+    tg_id: string | null
+    active?: boolean
+  }
+}
 
 export const signUp = async (
   first_name: string,
@@ -43,7 +64,7 @@ export const signUp = async (
       email,
       password,
     })
-    toast.success(res.data.message)
+    toast.success(res.data?.message ?? 'Успешно')
     return res.data
   } catch (error: unknown) {
     handleApiError(error)
@@ -52,8 +73,11 @@ export const signUp = async (
 
 export const signIn = async (email: string, password: string) => {
   try {
-    const res = await host.post('auth/signin', { email, password })
-    toast.success(res.data.message)
+    const res = await host.post<AuthResponse>('auth/signin', {
+      email,
+      password,
+    })
+    toast.success(res.data?.message ?? 'Успешно')
     return res.data
   } catch (error: unknown) {
     handleApiError(error)
@@ -62,8 +86,8 @@ export const signIn = async (email: string, password: string) => {
 
 export const googleLogin = async (idToken: string) => {
   try {
-    const res = await host.post('auth/google', { idToken })
-    toast.success(res.data.message)
+    const res = await host.post<AuthResponse>('auth/google', { idToken })
+    toast.success(res.data?.message ?? 'Успешно')
     return res.data
   } catch (error: unknown) {
     handleApiError(error)
@@ -74,7 +98,7 @@ export const googleLogin = async (idToken: string) => {
 
 export const verify = async () => {
   try {
-    const res = await $host.post('user/verify')
+    const res = await $host.post<AuthResponse>('user/verify')
     return res.data
   } catch (error: unknown) {
     console.error(error)
@@ -84,7 +108,7 @@ export const verify = async () => {
 export const scanPostamat = async (id: string) => {
   try {
     const res = await $host.post('user/scan', { id })
-    toast.success(res.data.message)
+    toast.success(res.data?.message ?? 'Успешно')
     return res.data
   } catch (error: unknown) {
     handleApiError(error)
@@ -94,6 +118,7 @@ export const scanPostamat = async (id: string) => {
 export const bindTg = async (tg_id: string) => {
   try {
     const res = await $host.post('user/bind_tg', { tg_id })
+    toast.success(res.data?.message ?? 'Успешно')
     return res.data
   } catch (error: unknown) {
     handleApiError(error)
@@ -103,6 +128,7 @@ export const bindTg = async (tg_id: string) => {
 export const sendTg = async (message: string) => {
   try {
     const res = await $host.post('user/send_tg', { message })
+    toast.success(res.data?.message ?? 'Успешно')
     return res.data
   } catch (error: unknown) {
     handleApiError(error)
@@ -112,7 +138,7 @@ export const sendTg = async (message: string) => {
 export const sendEmail = async () => {
   try {
     const res = await $host.post('user/email')
-    toast.success(res.data.message)
+    toast.success(res.data?.message ?? 'Успешно')
     return res.data
   } catch (error: unknown) {
     handleApiError(error)
@@ -122,7 +148,7 @@ export const sendEmail = async () => {
 export const confirmEmail = async (secret: string) => {
   try {
     const res = await $host.post('user/conf_email', { secret })
-    toast.success(res.data.message)
+    toast.success(res.data?.message ?? 'Успешно')
     return res.data
   } catch (error: unknown) {
     handleApiError(error)
@@ -134,7 +160,6 @@ export const confirmEmail = async (secret: string) => {
 export const getUsers = async (id?: string) => {
   try {
     const res = await $host.get('auth/users', { params: { id } })
-    toast.success(res.data.message)
     return res.data
   } catch (error: unknown) {
     handleApiError(error)
@@ -149,7 +174,7 @@ export const createAdminUser = async (payload: {
 }) => {
   try {
     const res = await $host.post('auth/users', payload)
-    toast.success(res.data.message)
+    toast.success(res.data?.message ?? 'Успешно')
     return res.data
   } catch (error: unknown) {
     handleApiError(error)
@@ -158,29 +183,54 @@ export const createAdminUser = async (payload: {
 
 /* ===================== PRODUCTS ===================== */
 
+/**
+ * НОРМАЛИЗОВАННЫЙ продукт — в UI cost всегда number
+ */
 export type ProductDTO = {
   id: number
   name: string
-  cost: number | string
+  cost: number
   length: number
   width: number
   height: number
   weight: number
 }
 
+/**
+ * СЫРОЙ ответ от backend (DECIMAL может быть string)
+ */
+type ProductsResponseRaw = {
+  products: Array<{
+    id: number
+    name: string
+    cost: string | number
+    length: number
+    width: number
+    height: number
+    weight: number
+  }>
+}
+
+/**
+ * ЧИСТЫЙ ответ для UI
+ */
 export type ProductsResponse = {
   products: ProductDTO[]
 }
 
 export const getProducts = async (): Promise<ProductsResponse | undefined> => {
   try {
-    const res = await $host.get<ProductsResponse>('auth/products')
+    const res = await $host.get<ProductsResponseRaw>('auth/products')
 
-    // КЛЮЧЕВОЕ: DECIMAL/NUMERIC часто приходит строкой — приводим к number здесь.
     return {
       products: res.data.products.map((p) => ({
-        ...p,
-        cost: Number(p.cost),
+        id: p.id,
+        name: p.name,
+        cost: Number(p.cost), // 🔴 ключевой фикс
+        length: p.length,
+        width: p.width,
+        height: p.height,
+        weight: p.weight,
       })),
     }
   } catch (error: unknown) {
@@ -205,7 +255,7 @@ export const createProduct = async (
       height,
       weight,
     })
-    toast.success(res.data.message)
+    toast.success(res.data?.message ?? 'Успешно')
     return res.data
   } catch (error: unknown) {
     handleApiError(error)
@@ -215,7 +265,7 @@ export const createProduct = async (
 export const deleteProduct = async (id: number) => {
   try {
     const res = await $host.delete('user/products', { params: { id } })
-    toast.success(res.data.message)
+    toast.success(res.data?.message ?? 'Успешно')
     return res.data
   } catch (error: unknown) {
     handleApiError(error)
@@ -235,17 +285,20 @@ export const askAssistant = async (question: string) => {
 
 /* ===================== PURCHASE ===================== */
 
+export type DeliveryType = 'COURIER' | 'POSTOMAT' | 'BRANCH'
+export type CourierMode = 'HOME' | 'POSTOMAT'
+
 export const createPurchase = async (payload: {
   productId: number
-  deliveryType: 'COURIER' | 'POSTOMAT' | 'BRANCH'
+  deliveryType: DeliveryType
   branchId?: number
   postomatId?: number
   courierId?: number
-  courierMode?: 'HOME' | 'POSTOMAT'
+  courierMode?: CourierMode
 }) => {
   try {
     const res = await $host.post('purchase', payload)
-    toast.success(res.data.message)
+    toast.success(res.data?.message ?? 'Успешно')
     return res.data
   } catch (error: unknown) {
     handleApiError(error)
@@ -255,36 +308,6 @@ export const createPurchase = async (payload: {
 export const getPurchases = async () => {
   try {
     const res = await $host.get('purchase')
-    return res.data
-  } catch (error: unknown) {
-    handleApiError(error)
-  }
-}
-
-export const markPurchaseDelivered = async (id: number) => {
-  try {
-    const res = await $host.put(`purchase/${id}/deliver`)
-    toast.success(res.data.message)
-    return res.data
-  } catch (error: unknown) {
-    handleApiError(error)
-  }
-}
-
-export const markPurchasePlaced = async (id: number) => {
-  try {
-    const res = await $host.put(`purchase/${id}/placed`)
-    toast.success(res.data.message)
-    return res.data
-  } catch (error: unknown) {
-    handleApiError(error)
-  }
-}
-
-export const receivePurchase = async (id: number) => {
-  try {
-    const res = await $host.put(`purchase/${id}/receive`)
-    toast.success(res.data.message)
     return res.data
   } catch (error: unknown) {
     handleApiError(error)

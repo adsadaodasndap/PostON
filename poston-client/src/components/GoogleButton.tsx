@@ -30,7 +30,9 @@ export default function GoogleLoginButton() {
       try {
         const idToken = event.data.token
         const res = await googleLogin(idToken)
+        if (!res || !res.token) return
         login(res.user, res.token)
+
         // navigate('/1-telegram')
       } catch (err) {
         console.error('Login failed', err)

@@ -1,86 +1,102 @@
-import { Box, Button, Paper, Stack, TextField, Typography } from '@mui/material'
-import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import {
+  Box,
+  Button,
+  Container,
+  Paper,
+  TextField,
+  Typography,
+} from '@mui/material'
+
 import { signIn } from '../http/API'
 import { useUser } from '../context/user/useUser'
 
-export default function Login() {
+const Login = () => {
+  const navigate = useNavigate()
+  const { login } = useUser()
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const { user, login } = useUser()
-  const navigate = useNavigate()
-  const submitSignIn = async () => {
-    const res = await signIn(email, password)
+  const [loading, setLoading] = useState(false)
 
-    if (res.token) {
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    if (loading) return
+
+    const eMail = email.trim()
+    const pass = password
+
+    if (!eMail || !pass) return
+
+    try {
+      setLoading(true)
+
+      const res = await signIn(eMail, pass)
+
+      // 🔴 TS fix + runtime fix: signIn может вернуть undefined
+      if (!res?.token) return
+
       login(res.user, res.token)
-      if (res.user.role === 'POSTAMAT') navigate('/postamat')
-      else navigate('/products')
+
+      // Роутинг по роли (если у тебя другая логика — меняешь здесь)
+      if (res.user.role === 'POSTAMAT') {
+        navigate('/postamat')
+        return
+      }
+
+      // дефолт — на главную/продукты
+      navigate('/products')
+    } finally {
+      setLoading(false)
     }
   }
 
-  useEffect(() => {
-    if (user.role) {
-      navigate('/products')
-    }
-  }, [user])
-
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        bgcolor: '#f7f7f9',
-      }}
-    >
-      <Paper
-        sx={{
-          p: 4,
-          textAlign: 'center',
-          maxWidth: 360,
-          width: '100%',
-          boxShadow: 6,
-          borderRadius: 3,
-        }}
-      >
+    <Container maxWidth="sm" sx={{ py: 6 }}>
+      <Paper elevation={3} sx={{ p: 4 }}>
         <Typography variant="h5" sx={{ mb: 2 }}>
-          Вход в PostON
+          Вход
         </Typography>
-        <Stack spacing={2}>
+
+        <Box
+          component="form"
+          onSubmit={onSubmit}
+          sx={{ display: 'grid', gap: 2 }}
+        >
           <TextField
             label="Email"
             type="email"
-            variant="outlined"
-            fullWidth
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            autoComplete="email"
+            fullWidth
           />
 
           <TextField
             label="Пароль"
             type="password"
-            variant="outlined"
-            fullWidth
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+            fullWidth
           />
 
-          <Button
-            onClick={submitSignIn}
-            fullWidth
-            variant="contained"
-            sx={{ bgcolor: '#6f2dbd' }}
-          >
-            Войти
+          <Button type="submit" variant="contained" disabled={loading}>
+            {loading ? 'Вход...' : 'Войти'}
           </Button>
 
-          <Link to="/reg" style={{ textDecoration: 'none' }}>
-            <Button fullWidth>Регистрация</Button>
-          </Link>
-        </Stack>
+          <Button
+            variant="text"
+            onClick={() => navigate('/register')}
+            disabled={loading}
+          >
+            Нет аккаунта? Регистрация
+          </Button>
+        </Box>
       </Paper>
-    </Box>
+    </Container>
   )
 }
+
+export default Login

@@ -323,6 +323,37 @@ export const getCouriers = async () => {
   }
 }
 
+export const markPurchaseDelivered = async (id: number) => {
+  try {
+    // ВАЖНО: если на сервере другой путь — см. примечание ниже
+    const res = await $host.put(`purchase/${id}/deliver`)
+    toast.success(res.data?.message ?? 'Успешно')
+    return res.data
+  } catch (error: unknown) {
+    handleApiError(error)
+  }
+}
+
+export const markPurchasePlaced = async (id: number) => {
+  try {
+    const res = await $host.put(`purchase/${id}/placed`)
+    toast.success(res.data?.message ?? 'Успешно')
+    return res.data
+  } catch (error: unknown) {
+    handleApiError(error)
+  }
+}
+
+export const receivePurchase = async (id: number) => {
+  try {
+    const res = await $host.put(`purchase/${id}/receive`)
+    toast.success(res.data?.message ?? 'Успешно')
+    return res.data
+  } catch (error: unknown) {
+    handleApiError(error)
+  }
+}
+
 /* ===================== POSTOMAT ===================== */
 
 export const postomatCourierEnter = async (qr: string) => {

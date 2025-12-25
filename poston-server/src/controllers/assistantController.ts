@@ -1,19 +1,32 @@
-import { Request, Response } from 'express'
+import type { Request, Response } from 'express'
 import axios from 'axios'
-import cfg from '../config'
-import unexpectedError from '../helpers/unexpectedError'
+import cfg from '../config.js'
+import unexpectedError from '../helpers/unexpectedError.js'
+
+type OpenAIChatCompletionResponse = {
+  choices?: Array<{
+    message?: {
+      content?: string
+    }
+  }>
+}
 
 export const askGPT = async (req: Request, res: Response) => {
   try {
-    const { question } = req.body
+    const question = String(
+      (req.body as { question?: unknown })?.question ?? ''
+    ).trim()
+
     if (!question) {
       return res.status(400).json({ message: 'Не задан вопрос для AI' })
     }
+
     const apiKey = cfg.GPT_KEY
     if (!apiKey || apiKey === 'xxxx') {
       return res.status(500).json({ message: 'API-ключ GPT не настроен' })
     }
-    const response = await axios.post(
+
+    const response = await axios.post<OpenAIChatCompletionResponse>(
       'https://api.openai.com/v1/chat/completions',
       {
         model: 'gpt-3.5-turbo',
@@ -26,15 +39,19 @@ export const askGPT = async (req: Request, res: Response) => {
         },
       }
     )
+
     const answer =
-      response.data.choices?.[0]?.message?.content || 'Извините, нет ответа.'
+      response.data.choices?.[0]?.message?.content ?? 'Извините, нет ответа.'
     return res.json({ answer })
-  } catch (e: any) {
-    if (e.response && e.response.data) {
-      return res
-        .status(500)
-        .json({ message: 'GPT Error: ' + JSON.stringify(e.response.data) })
+  } catch (err: unknown) {
+    // типобезопасная обработка axios-ошибок без any
+    if (axios.isAxiosError(err)) {
+      return res.status(err.response?.status ?? 500).json({
+        message: 'GPT Error',
+        details: err.response?.data ?? err.message,
+      })
     }
-    return unexpectedError(res, e)
+
+    return unexpectedError(res, err)
   }
 }

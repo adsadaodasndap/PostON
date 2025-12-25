@@ -41,8 +41,7 @@ export const createPurchase = async (req: Request, res: Response) => {
     let postomat_id: number | null = null
     let postomat_slot: number | null = null
     let courier_id: number | null = null
-    let courier_mode: CourierMode | null = null
-
+    let courier_mode: CourierMode | undefined = undefined
     const dtRaw = String(deliveryType).toUpperCase()
     if (!isDeliveryType(dtRaw)) {
       return res.status(400).json({ message: 'Некорректный тип доставки' })

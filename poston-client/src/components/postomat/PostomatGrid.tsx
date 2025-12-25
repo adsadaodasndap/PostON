@@ -4,7 +4,6 @@ export type SlotViewState = 'FREE' | 'BUSY' | 'RESERVED' | 'UNKNOWN' | 'TARGET'
 
 export type SlotView = {
   id: number
-
   label: number
   state: SlotViewState
   disabled?: boolean
@@ -12,7 +11,6 @@ export type SlotView = {
 
 export interface PostomatGridProps {
   slots: SlotView[]
-
   onSlotClick?: (slotId: number) => void
 }
 
@@ -68,13 +66,7 @@ export default function PostomatGrid({
         return (
           <Tooltip key={s.id} title={title} arrow>
             <Paper
-              onClick={
-                clickable
-                  ? () => {
-                      onSlotClick?.(s.id)
-                    }
-                  : undefined
-              }
+              onClick={clickable ? () => onSlotClick?.(s.id) : undefined}
               sx={{
                 height: 78,
                 borderRadius: 1.5,

@@ -14,42 +14,38 @@ import PostomatPage from './pages/PostomatPage'
 import ProductsPage from './pages/ProductsPage'
 import ProfilePage from './pages/ProfilePage'
 import Register from './pages/Register'
-import WorkerPage from './pages/WorkerPage'
 import AdminPage from './pages/Admin'
-import Checkout from './pages/Checkout'
+import WorkerPage from './pages/WorkerPage'
 import AssistantPage from './pages/AssistantPage'
+
+import 'react-toastify/dist/ReactToastify.css'
 
 const router = createBrowserRouter([
   {
+    path: '/',
     element: <RootLayout />,
     children: [
-      { path: '/', element: <Login /> },
+      { path: '/', element: <ProductsPage /> },
+      { path: '/auth', element: <Login /> },
+      { path: '/register', element: <Register /> },
       {
-        path: '/reg',
-        element: <Register />,
+        path: '/profile',
+        element: (
+          <WithAuth
+            c={<ProfilePage />}
+            roles={['BUYER', 'SELLER', 'ADMIN', 'COURIER', 'POSTAMAT']}
+          />
+        ),
       },
       {
         path: '/products',
         element: <ProductsPage />,
       },
       {
-        path: '/profile',
-        element: (
-          <WithAuth
-            c={<ProfilePage />}
-            roles={['BUYER', 'SELLER', 'ADMIN', 'COURIER']}
-          />
-        ),
-      },
-      {
         path: '/client',
         element: (
-          <WithAuth c={<ClientPage />} roles={['BUYER', 'SELLER', 'ADMIN']} />
+          <WithAuth c={<ClientPage />} roles={['SELLER', 'ADMIN', 'BUYER']} />
         ),
-      },
-      {
-        path: '/worker',
-        element: <WithAuth c={<WorkerPage />} roles={['SELLER', 'ADMIN']} />,
       },
       {
         path: '/courier',
@@ -74,10 +70,8 @@ const router = createBrowserRouter([
         element: <WithAuth c={<AdminPage />} roles={['ADMIN']} />,
       },
       {
-        path: '/checkout',
-        element: (
-          <WithAuth c={<Checkout />} roles={['BUYER', 'SELLER', 'ADMIN']} />
-        ),
+        path: '/worker',
+        element: <WithAuth c={<WorkerPage />} roles={['SELLER']} />,
       },
       {
         path: '/assistant',
@@ -96,18 +90,16 @@ const router = createBrowserRouter([
 const theme = createTheme({
   palette: {
     mode: 'light',
-    primary: { main: '#6f2dbd' },
-    background: { default: '#f7f7f9' },
-  },
-  typography: {
-    fontFamily: 'system-ui, Avenir, Helvetica, Arial, sans-serif',
+    primary: {
+      main: '#6a1b9a',
+    },
   },
 })
 
-createRoot(document.getElementById('root')!).render(
+createRoot(document.getElementById('root') as HTMLElement).render(
   <ThemeProvider theme={theme}>
     <CssBaseline />
     <RouterProvider router={router} />
-    <ToastContainer theme="colored" position="bottom-left" />
+    <ToastContainer position="top-right" autoClose={2500} />
   </ThemeProvider>
 )

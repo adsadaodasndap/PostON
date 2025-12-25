@@ -1,3 +1,7 @@
+/* ВНИМАНИЕ:
+   Файл большой. Я не сокращаю и не “частями”, потому что ты просил “вставить и работает”.
+   Если хочешь — скажи, и я сделаю укороченную версию без MONITOR/без polling.
+*/
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Box,
@@ -75,8 +79,6 @@ export default function PostomatPage() {
   }, [user.role])
 
   const grid: SlotView[] = useMemo(() => {
-    // BUYER не имеет доступа к /postomat/slots по текущему RBAC backend,
-    // поэтому рисуем 20 ячеек как UNKNOWN и подсвечиваем только свою.
     if (activeMode === 'BUYER') {
       const total = 20
       return Array.from({ length: total }, (_, idx) => {
@@ -91,7 +93,6 @@ export default function PostomatPage() {
       })
     }
 
-    // COURIER / MONITOR: реальные состояния слотов
     return slots.map((s, idx) => {
       const isReserved = reservedSlotId === s.id
       return {
@@ -121,7 +122,6 @@ export default function PostomatPage() {
   }, [activeMode])
 
   useEffect(() => {
-    // Пуллинг только для COURIER/MONITOR
     if (activeMode === 'BUYER') return
     if (pollRef.current) window.clearInterval(pollRef.current)
     pollRef.current = window.setInterval(() => {

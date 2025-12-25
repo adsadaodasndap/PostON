@@ -55,14 +55,25 @@ export const courierScanQR = async (req: Request, res: Response) => {
     if (!purchase)
       return res.status(404).json({ message: 'purchase_not_found' })
 
+    // ВАЖНО: это сценарий "курьер кладет в постомат"
+    if (
+      purchase.delivery_type !== 'COURIER' ||
+      purchase.courier_mode !== 'POSTOMAT'
+    ) {
+      return res.status(400).json({ message: 'wrong_delivery_mode' })
+    }
+
     const slots = await buildSlotsState()
     const chosen = pickRandomFreeSlot(slots)
     if (!chosen) return res.status(409).json({ message: 'no_free_slots' })
 
+    const reservedUntil = new Date(Date.now() + RESERVE_MINUTES * 60_000)
+
     await Purchase.update(
       {
         slot_reserved_id: chosen.id,
-        slot_reserved_until: new Date(Date.now() + RESERVE_MINUTES * 60_000),
+        slot_reserved_until: reservedUntil,
+        status: 'SLOT_RESERVED',
       },
       { where: { id: purchase.id } }
     )
@@ -72,7 +83,8 @@ export const courierScanQR = async (req: Request, res: Response) => {
       purchaseId: purchase.id,
       slots,
       reservedSlotId: chosen.id,
-      reservedUntil: new Date(Date.now() + RESERVE_MINUTES * 60_000),
+      reservedUntil,
+      status: 'SLOT_RESERVED',
     })
   } catch (e) {
     return unexpectedError(res, e)
@@ -92,16 +104,28 @@ export const courierOpenDoor = async (req: Request, res: Response) => {
     if (!purchase || purchase.courier_id !== req.user.id)
       return res.status(404).json({ message: 'purchase_not_found' })
 
+    if (
+      purchase.delivery_type !== 'COURIER' ||
+      purchase.courier_mode !== 'POSTOMAT'
+    ) {
+      return res.status(400).json({ message: 'wrong_delivery_mode' })
+    }
+
     if (!purchase.slot_reserved_id || !purchase.slot_reserved_until)
       return res.status(400).json({ message: 'slot_not_reserved' })
 
     if (new Date(purchase.slot_reserved_until).getTime() < Date.now())
       return res.status(409).json({ message: 'reservation_expired' })
 
-    await Purchase.update({ door_opened: true }, { where: { id: purchase.id } })
+    await Purchase.update(
+      { door_opened: true, status: 'DOOR_OPEN' },
+      { where: { id: purchase.id } }
+    )
+
     return res.json({
       message: 'door_opened',
       slotId: purchase.slot_reserved_id,
+      status: 'DOOR_OPEN',
     })
   } catch (e) {
     return unexpectedError(res, e)
@@ -120,6 +144,13 @@ export const courierPlaceParcel = async (req: Request, res: Response) => {
     const purchase = await Purchase.findByPk(Number(purchaseId))
     if (!purchase || purchase.courier_id !== req.user.id)
       return res.status(404).json({ message: 'purchase_not_found' })
+
+    if (
+      purchase.delivery_type !== 'COURIER' ||
+      purchase.courier_mode !== 'POSTOMAT'
+    ) {
+      return res.status(400).json({ message: 'wrong_delivery_mode' })
+    }
 
     if (!purchase.door_opened)
       return res.status(409).json({ message: 'door_not_opened' })
@@ -140,7 +171,8 @@ export const courierPlaceParcel = async (req: Request, res: Response) => {
       {
         postomat_id: POSTOMAT_ID,
         postomat_slot: purchase.slot_reserved_id,
-        date_send: new Date(),
+        date_send: purchase.date_send ?? new Date(),
+        status: 'PLACED',
       },
       { where: { id: purchase.id } }
     )
@@ -150,6 +182,7 @@ export const courierPlaceParcel = async (req: Request, res: Response) => {
       postomatId: POSTOMAT_ID,
       slotId: purchase.slot_reserved_id,
       clientQr: purchase.client_qr,
+      status: 'PLACED',
     })
   } catch (e) {
     return unexpectedError(res, e)
@@ -169,12 +202,24 @@ export const courierCloseDoor = async (req: Request, res: Response) => {
     if (!purchase || purchase.courier_id !== req.user.id)
       return res.status(404).json({ message: 'purchase_not_found' })
 
+    if (
+      purchase.delivery_type !== 'COURIER' ||
+      purchase.courier_mode !== 'POSTOMAT'
+    ) {
+      return res.status(400).json({ message: 'wrong_delivery_mode' })
+    }
+
     await Purchase.update(
-      { door_opened: false, slot_reserved_id: null, slot_reserved_until: null },
+      {
+        door_opened: false,
+        slot_reserved_id: null,
+        slot_reserved_until: null,
+        status: 'READY_FOR_PICKUP',
+      },
       { where: { id: purchase.id } }
     )
 
-    return res.json({ message: 'door_closed' })
+    return res.json({ message: 'door_closed', status: 'READY_FOR_PICKUP' })
   } catch (e) {
     return unexpectedError(res, e)
   }
@@ -184,6 +229,7 @@ export const clientScanQR = async (req: Request, res: Response) => {
   try {
     if (!req.user)
       return res.status(401).json({ message: 'authorization_required' })
+
     const { qr } = req.body
     if (!qr) return res.status(400).json({ message: 'qr_required' })
 
@@ -196,6 +242,7 @@ export const clientScanQR = async (req: Request, res: Response) => {
     })
     if (!purchase)
       return res.status(404).json({ message: 'purchase_not_found' })
+
     if (!purchase.postomat_id || !purchase.postomat_slot)
       return res.status(409).json({ message: 'parcel_not_in_postomat_yet' })
 
@@ -203,6 +250,7 @@ export const clientScanQR = async (req: Request, res: Response) => {
       purchaseId: purchase.id,
       postomatId: purchase.postomat_id,
       slotId: purchase.postomat_slot,
+      status: purchase.status,
     })
   } catch (e) {
     return unexpectedError(res, e)
@@ -213,6 +261,7 @@ export const clientOpenDoor = async (req: Request, res: Response) => {
   try {
     if (!req.user)
       return res.status(401).json({ message: 'authorization_required' })
+
     const { purchaseId } = req.body
     if (!purchaseId)
       return res.status(400).json({ message: 'purchaseId_required' })
@@ -224,8 +273,23 @@ export const clientOpenDoor = async (req: Request, res: Response) => {
     if (!purchase.postomat_id || !purchase.postomat_slot)
       return res.status(409).json({ message: 'parcel_not_in_postomat_yet' })
 
-    await Purchase.update({ door_opened: true }, { where: { id: purchase.id } })
-    return res.json({ message: 'door_opened', slotId: purchase.postomat_slot })
+    if (
+      purchase.status !== 'READY_FOR_PICKUP' &&
+      purchase.status !== 'PLACED'
+    ) {
+      return res.status(409).json({ message: 'not_ready_for_pickup' })
+    }
+
+    await Purchase.update(
+      { door_opened: true, status: 'DOOR_OPEN' },
+      { where: { id: purchase.id } }
+    )
+
+    return res.json({
+      message: 'door_opened',
+      slotId: purchase.postomat_slot,
+      status: 'DOOR_OPEN',
+    })
   } catch (e) {
     return unexpectedError(res, e)
   }
@@ -235,6 +299,7 @@ export const clientTakeParcel = async (req: Request, res: Response) => {
   try {
     if (!req.user)
       return res.status(401).json({ message: 'authorization_required' })
+
     const { purchaseId } = req.body
     if (!purchaseId)
       return res.status(400).json({ message: 'purchaseId_required' })
@@ -247,10 +312,11 @@ export const clientTakeParcel = async (req: Request, res: Response) => {
       return res.status(409).json({ message: 'door_not_opened' })
 
     await Purchase.update(
-      { date_receive: new Date() },
+      { date_receive: new Date(), status: 'PICKED_UP' },
       { where: { id: purchase.id } }
     )
-    return res.json({ message: 'parcel_taken' })
+
+    return res.json({ message: 'parcel_taken', status: 'PICKED_UP' })
   } catch (e) {
     return unexpectedError(res, e)
   }
@@ -260,6 +326,7 @@ export const clientCloseDoor = async (req: Request, res: Response) => {
   try {
     if (!req.user)
       return res.status(401).json({ message: 'authorization_required' })
+
     const { purchaseId } = req.body
     if (!purchaseId)
       return res.status(400).json({ message: 'purchaseId_required' })
@@ -269,10 +336,17 @@ export const clientCloseDoor = async (req: Request, res: Response) => {
       return res.status(404).json({ message: 'purchase_not_found' })
 
     await Purchase.update(
-      { door_opened: false },
+      {
+        door_opened: false,
+        ...(purchase.date_receive ? {} : { status: 'READY_FOR_PICKUP' }),
+      },
       { where: { id: purchase.id } }
     )
-    return res.json({ message: 'door_closed' })
+
+    return res.json({
+      message: 'door_closed',
+      status: purchase.date_receive ? 'PICKED_UP' : 'READY_FOR_PICKUP',
+    })
   } catch (e) {
     return unexpectedError(res, e)
   }

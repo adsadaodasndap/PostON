@@ -1,32 +1,28 @@
 import { Router } from 'express'
-import authRouter from './authRouter.js'
-import userRouter from './userRouter.js'
-import ordersRouter from './orders.js'
-import purchaseRouter from './purchaseRouter.js'
-import accessLevel from '../middleware/accessLevel.js'
-import postomatRouter from './postomatRouter.js'
+import {
+  courierScanQR,
+  courierOpenDoor,
+  courierPlaceParcel,
+  courierCloseDoor,
+  clientScanQR,
+  clientOpenDoor,
+  clientTakeParcel,
+  clientCloseDoor,
+  getPostomatSlots,
+} from '../controllers/postomatController.js'
 
 const router = Router()
 
-router.use('/auth', authRouter)
-router.use('/orders', ordersRouter)
+router.post('/courier/scan', courierScanQR)
+router.post('/courier/open', courierOpenDoor)
+router.post('/courier/place', courierPlaceParcel)
+router.post('/courier/close', courierCloseDoor)
 
-router.use(
-  '/user',
-  accessLevel(['ADMIN', 'SELLER', 'BUYER', 'COURIER', 'POSTAMAT']),
-  userRouter
-)
+router.post('/client/scan', clientScanQR)
+router.post('/client/open', clientOpenDoor)
+router.post('/client/take', clientTakeParcel)
+router.post('/client/close', clientCloseDoor)
 
-router.use(
-  '/purchase',
-  accessLevel(['ADMIN', 'SELLER', 'BUYER', 'COURIER', 'POSTAMAT']),
-  purchaseRouter
-)
-
-router.use(
-  '/postomat',
-  accessLevel(['ADMIN', 'SELLER', 'BUYER', 'COURIER', 'POSTAMAT']),
-  postomatRouter
-)
+router.get('/slots', getPostomatSlots)
 
 export default router

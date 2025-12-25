@@ -271,3 +271,47 @@ export const getCouriers = async () => {
     handleApiError(error)
   }
 }
+export const postomatCourierEnter = async (qr: string) => {
+  try {
+    const res = await $host.post('postomat/courier/enter', { qr })
+    return res.data
+  } catch (error: unknown) {
+    handleApiError(error)
+  }
+}
+
+export const postomatCourierPlace = async (qr: string) => {
+  try {
+    const res = await $host.post('postomat/courier/place', { qr })
+    return res.data
+  } catch (error: unknown) {
+    handleApiError(error)
+  }
+}
+
+export const postomatCourierClose = async (qr: string) => {
+  try {
+    const res = await $host.post('postomat/courier/close', { qr })
+    return res.data
+  } catch (error: unknown) {
+    handleApiError(error)
+  }
+}
+
+export const postomatClientOpen = async (qr: string) => {
+  try {
+    const res = await $host.post('postomat/client/open', { qr })
+    return res.data
+  } catch (error: unknown) {
+    handleApiError(error)
+  }
+}
+
+export const postomatClientReceive = async (qr: string) => {
+  try {
+    const res = await $host.post('postomat/client/receive', { qr })
+    return res.data
+  } catch (error: unknown) {
+    handleApiError(error)
+  }
+}

@@ -1,123 +1,143 @@
-import * as React from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Box,
   Button,
+  Chip,
+  CircularProgress,
   Paper,
   Stack,
   TextField,
   Typography,
-  Chip,
 } from '@mui/material'
-import type { Postomat, Purchase, Slot, User } from '../types'
-import QRCode from 'react-qr-code'
-import { useUser } from '../context/user/useUser'
+import { toast } from 'react-toastify'
+import { $host } from '../http/API'
 
-type PostomatScreenState = {
-  postomat: Postomat
-  slots: Slot[]
-  purchases: Purchase[]
+type SlotState = { id: number; busy: boolean }
+type PostomatDTO = { id: number; adress: string; lat?: number; lon?: number }
+
+type CourierScanResp = {
+  postomatId: number
+  purchaseId: number
+  slots: SlotState[]
+  reservedSlotId: number
+  reservedUntil: string | Date
 }
 
-const initialPostomatState: PostomatScreenState = {
-  postomat: {
-    id: 1,
-    adress: 'Постамат ТЦ «Mega»',
-    lat: 49.97,
-    lon: 82.61,
-  },
-  slots: [
-    { id: 1, postomat_id: 1, width: 30, height: 20, length: 40 },
-    { id: 2, postomat_id: 1, width: 30, height: 20, length: 40 },
-    { id: 3, postomat_id: 1, width: 30, height: 20, length: 40 },
-  ],
-  purchases: [
-    {
-      id: 1,
-      user_id: 1,
-      product_id: 1,
-      delivery_type: 'POSTOMAT',
-      postomat_id: 1,
-      postomat_slot: 1,
-      product: {
-        id: 1,
-        name: 'Кроссовки',
-        cost: 45000,
-        length: 30,
-        width: 20,
-        height: 12,
-        weight: 0.8,
-      },
-      buyer: {
-        id: 1,
-        name: 'Покупатель 1',
-        role: 'BUYER',
-        phone: '+77030000001',
-        email: 'client1@example.com',
-      },
-    },
-    {
-      id: 2,
-      user_id: 2,
-      product_id: 2,
-      delivery_type: 'POSTOMAT',
-      postomat_id: 1,
-      postomat_slot: 2,
-      product: {
-        id: 2,
-        name: 'Наушники',
-        cost: 25000,
-        length: 15,
-        width: 15,
-        height: 10,
-        weight: 0.3,
-      },
-      buyer: {
-        id: 2,
-        name: 'Покупатель 2',
-        role: 'BUYER',
-        phone: '+77030000002',
-        email: 'client2@example.com',
-      },
-    },
-  ],
-}
-
-function findUserByCode(code: string, purchases: Purchase[]): User | null {
-  const byId = Number(code)
-  if (!Number.isNaN(byId)) {
-    const purchase = purchases.find((p) => p.user_id === byId)
-    if (purchase && purchase.buyer) return purchase.buyer
-  }
-  const byEmail = purchases.find((p) => p.buyer && p.buyer.email === code)
-  if (byEmail && byEmail.buyer) return byEmail.buyer
-  return null
+type SlotsResp = {
+  postomat: PostomatDTO
+  slots: SlotState[]
 }
 
 export default function PostomatPage() {
-  const { user } = useUser()
-  const [state, setState] =
-    React.useState<PostomatScreenState>(initialPostomatState)
-  const [userCode, setUserCode] = React.useState('')
-  const [currentUser, setCurrentUser] = React.useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [postomat, setPostomat] = useState<PostomatDTO | null>(null)
+  const [slots, setSlots] = useState<SlotState[]>([])
 
-  const handleSearchUser = () => {
-    const user = findUserByCode(userCode.trim(), state.purchases)
-    setCurrentUser(user)
+  const [qr, setQr] = useState('')
+  const [purchaseId, setPurchaseId] = useState<number | null>(null)
+  const [reservedSlotId, setReservedSlotId] = useState<number | null>(null)
+  const [doorOpened, setDoorOpened] = useState(false)
+  const [actionLoading, setActionLoading] = useState(false)
+
+  const grid = useMemo(() => {
+    return slots
+  }, [slots])
+
+  const loadSlots = async () => {
+    try {
+      setLoading(true)
+      const { data } = await $host.get<SlotsResp>('postomat/slots')
+      setPostomat(data.postomat)
+      setSlots(data.slots)
+    } catch (e) {
+      console.log(e)
+      toast.error('Не удалось загрузить постамат')
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const handleOpenCell = (purchaseId: number) => {
-    setState((prev) => ({
-      ...prev,
-      purchases: prev.purchases.filter((p) => p.id !== purchaseId),
-    }))
-  }
+  useEffect(() => {
+    loadSlots()
+  }, [])
 
-  const parcelsForCurrentUser: Purchase[] = currentUser
-    ? state.purchases.filter(
-        (p) =>
-          p.user_id === currentUser.id && p.postomat_id === state.postomat.id
+  const courierScan = async () => {
+    if (!qr.trim()) {
+      toast.error('Введи QR')
+      return
+    }
+    try {
+      setActionLoading(true)
+      const { data } = await $host.post<CourierScanResp>(
+        'postomat/courier/scan',
+        {
+          qr: qr.trim(),
+        }
       )
-    : []
+
+      setPurchaseId(data.purchaseId)
+      setReservedSlotId(data.reservedSlotId)
+      setDoorOpened(false)
+      setSlots(data.slots)
+
+      toast.success(`Ячейка #${data.reservedSlotId} зарезервирована`)
+    } catch (e: any) {
+      console.log(e)
+      toast.error('Скан не прошёл')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const courierOpenDoor = async () => {
+    if (!purchaseId) return toast.error('Сначала скан QR')
+    try {
+      setActionLoading(true)
+      await $host.post('postomat/courier/open', { purchaseId })
+      setDoorOpened(true)
+      toast.success('Дверца открыта')
+    } catch (e) {
+      console.log(e)
+      toast.error('Не удалось открыть дверцу')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const courierPlace = async () => {
+    if (!purchaseId) return toast.error('Сначала скан QR')
+    try {
+      setActionLoading(true)
+      const { data } = await $host.post('postomat/courier/place', {
+        purchaseId,
+      })
+      toast.success(`Положено в ячейку #${data.slotId}`)
+      await loadSlots()
+    } catch (e) {
+      console.log(e)
+      toast.error('Не удалось положить посылку')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const courierCloseDoor = async () => {
+    if (!purchaseId) return toast.error('Сначала скан QR')
+    try {
+      setActionLoading(true)
+      await $host.post('postomat/courier/close', { purchaseId })
+      setDoorOpened(false)
+      setReservedSlotId(null)
+      setPurchaseId(null)
+      toast.success('Дверца закрыта')
+      await loadSlots()
+    } catch (e) {
+      console.log(e)
+      toast.error('Не удалось закрыть дверцу')
+    } finally {
+      setActionLoading(false)
+    }
+  }
 
   return (
     <Box
@@ -130,16 +150,226 @@ export default function PostomatPage() {
         p: 2,
       }}
     >
-      <QRCode
-        value={'postid:' + String(user.id)}
-        size={300}
-        style={{
-          height: 'auto',
-          maxWidth: '100%',
-          width: '350px',
-          padding: '10px',
+      <Paper
+        sx={{
+          width: '100%',
+          maxWidth: 1100,
+          p: 3,
+          borderRadius: 2,
+          boxShadow: 3,
         }}
-      />
+      >
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+        >
+          <Box>
+            <Typography variant="h5" fontWeight={700}>
+              Постамат
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {postomat
+                ? `#${postomat.id} — ${postomat.adress}`
+                : 'Загрузка...'}
+            </Typography>
+          </Box>
+
+          <Button variant="outlined" onClick={loadSlots} disabled={loading}>
+            Обновить
+          </Button>
+        </Stack>
+
+        <Stack
+          direction={{ xs: 'column', md: 'row' }}
+          spacing={2}
+          sx={{ mt: 3 }}
+        >
+          <Paper
+            sx={{
+              flex: '0 0 380px',
+              p: 2,
+              borderRadius: 2,
+              border: '1px solid #e5e5e5',
+            }}
+          >
+            <Typography fontWeight={700} sx={{ mb: 1 }}>
+              Сценарий курьера (демо)
+            </Typography>
+
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              1. Курьер вводит QR → 2. ему резервируется свободная ячейка → 3.
+              открыть → положить → закрыть.
+            </Typography>
+
+            <Stack spacing={1.5}>
+              <TextField
+                label="QR (courier_qr)"
+                value={qr}
+                onChange={(e) => setQr(e.target.value)}
+                size="small"
+                fullWidth
+              />
+
+              <Button
+                variant="contained"
+                onClick={courierScan}
+                disabled={actionLoading}
+              >
+                Сканировать QR
+              </Button>
+
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Chip
+                  label={
+                    purchaseId ? `purchaseId: ${purchaseId}` : 'purchaseId: —'
+                  }
+                  variant="outlined"
+                />
+                <Chip
+                  label={
+                    reservedSlotId ? `ячейка: #${reservedSlotId}` : 'ячейка: —'
+                  }
+                  color={reservedSlotId ? 'primary' : 'default'}
+                  variant="outlined"
+                />
+              </Stack>
+
+              <Button
+                variant="outlined"
+                onClick={courierOpenDoor}
+                disabled={actionLoading || !purchaseId || doorOpened}
+              >
+                Открыть дверцу
+              </Button>
+
+              <Button
+                variant="contained"
+                onClick={courierPlace}
+                disabled={actionLoading || !purchaseId || !doorOpened}
+              >
+                Положить
+              </Button>
+
+              <Button
+                color="warning"
+                variant="contained"
+                onClick={courierCloseDoor}
+                disabled={actionLoading || !purchaseId}
+              >
+                Закрыть дверцу
+              </Button>
+
+              {actionLoading && (
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <CircularProgress size={18} />
+                  <Typography variant="body2" color="text.secondary">
+                    Выполняю операцию...
+                  </Typography>
+                </Stack>
+              )}
+
+              {doorOpened && (
+                <Typography variant="body2" color="error">
+                  Дверца открыта. Чтобы уйти — нужно закрыть.
+                </Typography>
+              )}
+            </Stack>
+          </Paper>
+
+          <Paper
+            sx={{
+              flex: 1,
+              p: 2,
+              borderRadius: 2,
+              border: '1px solid #e5e5e5',
+            }}
+          >
+            <Typography fontWeight={700} sx={{ mb: 1 }}>
+              Ячейки (1–20)
+            </Typography>
+
+            <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+              <Chip
+                label="Свободно"
+                sx={{ bgcolor: '#2e7d32', color: 'white' }}
+              />
+              <Chip
+                label="Занято"
+                sx={{ bgcolor: '#d32f2f', color: 'white' }}
+              />
+              <Chip
+                label="Резерв"
+                sx={{ bgcolor: '#ed6c02', color: 'white' }}
+              />
+            </Stack>
+
+            {loading ? (
+              <Stack alignItems="center" sx={{ py: 6 }}>
+                <CircularProgress />
+              </Stack>
+            ) : (
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: {
+                    xs: 'repeat(4, 1fr)',
+                    sm: 'repeat(5, 1fr)',
+                  },
+                  gap: 1.5,
+                }}
+              >
+                {grid.map((s, i) => {
+                  const isReserved = reservedSlotId === s.id
+                  const bg = isReserved
+                    ? '#ed6c02'
+                    : s.busy
+                      ? '#d32f2f'
+                      : '#2e7d32'
+
+                  return (
+                    <Box
+                      key={s.id}
+                      sx={{
+                        height: 78,
+                        borderRadius: 1.5,
+                        bgcolor: bg,
+                        color: 'white',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontWeight: 800,
+                        position: 'relative',
+                        userSelect: 'none',
+                      }}
+                      title={
+                        isReserved
+                          ? 'Зарезервировано под текущую операцию'
+                          : s.busy
+                            ? 'Занято'
+                            : 'Свободно'
+                      }
+                    >
+                      {i + 1}
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          position: 'absolute',
+                          bottom: 6,
+                          opacity: 0.9,
+                          fontWeight: 600,
+                        }}
+                      >
+                        {isReserved ? 'RESERVE' : s.busy ? 'BUSY' : 'FREE'}
+                      </Typography>
+                    </Box>
+                  )
+                })}
+              </Box>
+            )}
+          </Paper>
+        </Stack>
+      </Paper>
     </Box>
   )
 }

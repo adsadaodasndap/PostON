@@ -10,7 +10,7 @@ import ClientPage from './pages/ClientPage'
 import CourierPage from './pages/CourierPage'
 import Login from './pages/Login'
 import NotFound from './pages/NotFound'
-// import PostomatPage from './pages/PostomatPage.-tsx'
+import PostomatPage from './pages/PostomatPage'
 import ProductsPage from './pages/ProductsPage'
 import ProfilePage from './pages/ProfilePage'
 import Register from './pages/Register'
@@ -60,10 +60,10 @@ const router = createBrowserRouter([
           />
         ),
       },
-      // {
-      //   path: '/postamat',
-      //   element: <WithAuth c={<PostomatPage />} roles={['POSTAMAT']} />,
-      // },
+      {
+        path: '/postomat',
+        element: <WithAuth c={<PostomatPage />} roles={['POSTAMAT']} />,
+      },
       {
         path: '/admin',
         element: <WithAuth c={<AdminPage />} roles={['ADMIN']} />,

@@ -45,55 +45,70 @@ const categories: { id: CategoryId; title: string; icon?: string }[] = [
 
 // Фото товаров должны лежать в: public/catalog/
 // ВАЖНО: ключи должны 1-в-1 совпадать с prod.name из БД
+
 const imageByName: Record<string, string> = {
+  // CPU
   'Процессор Intel Core i5-12400F':
     '/catalog/Процессор Intel Core i5-12400F.jpg',
   'Процессор AMD Ryzen 5 5600': '/catalog/Процессор AMD Ryzen 5 5600.jpg',
 
+  // GPU
   'Видеокарта NVIDIA RTX 3060 12GB':
     '/catalog/Видеокарта NVIDIA RTX 3060 12GB.jpg',
   'Видеокарта AMD Radeon RX 6700 XT':
     '/catalog/Видеокарта AMD Radeon RX 6700 XT.jpg',
 
+  // Motherboards
   'Материнская плата ASUS PRIME B660M':
     '/catalog/Материнская плата ASUS PRIME B660M.jpg',
   'Материнская плата MSI B550-A PRO':
     '/catalog/Материнская плата MSI B550-A PRO.jpg',
 
+  // RAM
   'Оперативная память DDR4 16GB (2x8) 3200MHz':
     '/catalog/Оперативная память DDR4 16GB (2x8) 3200MHz.jpg',
   'Оперативная память DDR5 32GB (2x16) 5600MHz':
     '/catalog/Оперативная память DDR5 32GB (2x16) 5600MHz.jpg',
 
+  // Storage
   'SSD NVMe 1TB Samsung 980': '/catalog/SSD NVMe 1TB Samsung 980.jpg',
   'SSD SATA 512GB Kingston A400': '/catalog/SSD SATA 512GB Kingston A400.jpg',
   'Жёсткий диск HDD 2TB Seagate Barracuda':
     '/catalog/Жёсткий диск HDD 2TB Seagate Barracuda.jpg',
 
+  // PSU
   'Блок питания 650W Corsair RM650':
     '/catalog/Блок питания 650W Corsair RM650.jpg',
   'Блок питания 750W Cooler Master MWE':
     '/catalog/Блок питания 750W Cooler Master MWE.jpg',
 
-  'Корпус ATX NZXT H510': '/catalog/Корпус ATX NZXT H510.jpg',
-  'Корпус Micro-ATX Deepcool Matrexx 40':
-    '/catalog/Корпус Micro-ATX Deepcool Matrexx 40.jpg',
-
+  // Cooling
   'Кулер для процессора Cooler Master Hyper 212':
     '/catalog/Кулер для процессора Cooler Master Hyper 212.jpg',
   'Вентилятор 120mm Arctic P12': '/catalog/Вентилятор 120mm Arctic P12.jpg',
   'Водяное охлаждение 240mm Deepcool GAMMAXX':
     '/catalog/Водяное охлаждение 240mm Deepcool GAMMAXX.jpg',
 
+  // Case
+  'Корпус ATX NZXT H510': '/catalog/Корпус ATX NZXT H510.jpg',
+  'Корпус Micro-ATX Deepcool Matrexx 40':
+    '/catalog/Корпус Micro-ATX Deepcool Matrexx 40.jpg',
+
+  // Paste
   'Термопаста Arctic MX-4 (4 г)': '/catalog/Термопаста Arctic MX-4 (4 г).jpg',
+
+  // Sound / Periphery
   'Звуковая карта PCI-E Creative Sound Blaster':
     '/catalog/Звуковая карта PCI-E Creative Sound Blaster.jpg',
   'Клавиатура механическая Red Switch':
     '/catalog/Клавиатура механическая Red Switch.jpg',
+  'Мышь игровая 16000 DPI': '/catalog/Мышь игровая 16000 DPI.jpg',
   'Ковёр для мыши XL': '/catalog/Ковёр для мыши XL.jpg',
 
+  // Monitor
   'Монитор 24 IPS 144Hz': '/catalog/Монитор 24 IPS 144Hz.jpg',
-  'Мышь игровая 16000 DPI': '/catalog/Мышь игровая 16000 DPI.jpg',
+
+  // Wi-Fi
   'Wi-Fi адаптер USB AC1300': '/catalog/Wi-Fi адаптер USB AC1300.jpg',
 }
 

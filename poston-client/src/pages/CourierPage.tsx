@@ -1,23 +1,29 @@
 import * as React from 'react'
 import { Box, Button, Chip, Paper, Stack, Typography } from '@mui/material'
-import type { Purchase } from '../types'
-import {
-  getPurchases,
-  markPurchaseDelivered,
-  markPurchasePlaced,
-} from '../http/API'
 import { toast } from 'react-toastify'
+import { useNavigate } from 'react-router-dom'
+import type { Purchase } from '../types'
+import { getPurchases } from '../http/API'
 import { useUser } from '../context/user/useUser'
 
+function isCourierPostomat(p: any) {
+  return p?.delivery_type === 'COURIER' && p?.courier_mode === 'POSTOMAT'
+}
+
 function isFinishedForCourier(p: any) {
-  if (p.delivery_type === 'COURIER' && p.courier_mode === 'POSTOMAT') {
-    return Boolean(p.date_send)
-  }
+  if (isCourierPostomat(p))
+    return (
+      Boolean(p.date_send) ||
+      p.status === 'READY_FOR_PICKUP' ||
+      p.status === 'PICKED_UP'
+    )
   return Boolean(p.date_receive)
 }
 
 export default function CourierPage() {
   const { user } = useUser()
+  const navigate = useNavigate()
+
   const [purchases, setPurchases] = React.useState<Purchase[]>([])
   const [loading, setLoading] = React.useState(false)
 
@@ -48,15 +54,9 @@ export default function CourierPage() {
       : 'Доставка до двери'
   }
 
-  const handleDeliveredToClient = async (id: number) => {
-    const r = await markPurchaseDelivered(id)
-    if (r) await load()
-  }
-
-  const handlePlacedToPostomat = async (id: number) => {
-    const r = await markPurchasePlaced(id)
-    if (r) await load()
-  }
+  const goToPostomatFlow = React.useCallback(() => {
+    navigate('/postomat?mode=COURIER')
+  }, [navigate])
 
   return (
     <Box
@@ -141,24 +141,19 @@ export default function CourierPage() {
                 )}
 
                 <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
-                  {p.courier_mode !== 'POSTOMAT' && (
+                  {p.courier_mode === 'POSTOMAT' ? (
                     <Button
                       variant="contained"
                       sx={{ bgcolor: '#6f2dbd' }}
-                      onClick={() => handleDeliveredToClient(p.id)}
+                      onClick={goToPostomatFlow}
                     >
-                      Доставлено клиенту
+                      Открыть постомат (скан QR)
                     </Button>
-                  )}
-
-                  {p.courier_mode === 'POSTOMAT' && (
-                    <Button
-                      variant="contained"
-                      sx={{ bgcolor: '#6f2dbd' }}
-                      onClick={() => handlePlacedToPostomat(p.id)}
-                    >
-                      Положено в постамат
-                    </Button>
+                  ) : (
+                    <Chip
+                      label="Доставка до двери: отметка получения делается клиентом/системой"
+                      variant="outlined"
+                    />
                   )}
                 </Stack>
               </Paper>
@@ -208,13 +203,13 @@ export default function CourierPage() {
 
                 {p.courier_mode === 'POSTOMAT' && p.postomat && (
                   <Typography variant="body2" color="text.secondary">
-                    Положено в постамат: {p.postomat.adress}
+                    Положено в постомат: {p.postomat.adress}
                   </Typography>
                 )}
 
                 {p.courier_mode !== 'POSTOMAT' && (
                   <Typography variant="body2" color="text.secondary">
-                    Доставлено клиенту
+                    Доставка до двери завершена (получено клиентом)
                   </Typography>
                 )}
               </Paper>

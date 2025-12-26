@@ -45,14 +45,30 @@ type CourierDTO = {
   name: string
 }
 
+function normalizeCouriers(input: unknown): CourierDTO[] {
+  if (Array.isArray(input)) {
+    return input
+      .map((x) => {
+        const o = x as Partial<CourierDTO>
+        if (typeof o?.id !== 'number') return null
+        if (typeof o?.name !== 'string') return null
+        return { id: o.id, name: o.name }
+      })
+      .filter((v): v is CourierDTO => v !== null)
+  }
+
+  const obj = input as { couriers?: unknown }
+  if (obj && Array.isArray(obj.couriers)) return normalizeCouriers(obj.couriers)
+
+  return []
+}
+
 export default function TopBar() {
   const navigate = useNavigate()
   const { user, cart, setUser, setCart, cartOpen, setCartOpen } = useUser()
-  const hideTopbar = user?.role === 'POSTAMAT'
 
   const [searchParams, setSearchParams] = useSearchParams()
 
-  // ДИАЛОГ ОФОРМЛЕНИЯ ДОСТАВКИ (как у тебя)
   const [checkoutOpen, setCheckoutOpen] = useState(false)
   const [couriersLoading, setCouriersLoading] = useState(false)
   const [couriers, setCouriers] = useState<CourierDTO[]>([])
@@ -60,20 +76,44 @@ export default function TopBar() {
   const [courierMode, setCourierMode] = useState<'HOME' | 'POSTOMAT'>('HOME')
   const [checkoutSubmitting, setCheckoutSubmitting] = useState(false)
 
-  // MENU (как у тебя)
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null)
   const [mobileMoreAnchorEl, setMobileMoreAnchorEl] =
     useState<null | HTMLElement>(null)
 
+  const isAuth = Boolean(user?.role)
+  const hideTopbar = user?.role === 'POSTAMAT'
+
+  useEffect(() => {
+    if (isAuth) return
+    setAnchorEl(null)
+    setMobileMoreAnchorEl(null)
+    setCheckoutOpen(false)
+    setCourierId(null)
+    setCourierMode('HOME')
+    setCouriers([])
+    setCouriersLoading(false)
+    setCheckoutSubmitting(false)
+    setCartOpen(false)
+  }, [isAuth, setCartOpen])
+
   useEffect(() => {
     const secret = searchParams.get('secret')
     if (!secret) return
-    console.log(setSearchParams)
 
-    confirmEmail(secret).then((isConfirmed: boolean) => {
-      if (!isConfirmed) return
-      setUser((prev) => ({ ...prev, active: true }))
-    })
+    confirmEmail(secret)
+      .then((res) => {
+        const ok =
+          typeof res === 'boolean'
+            ? res
+            : Boolean((res as { message?: unknown } | undefined)?.message)
+
+        if (!ok) return
+
+        setUser((prev) => ({ ...prev, active: true }))
+      })
+      .finally(() => {
+        setSearchParams({})
+      })
   }, [searchParams, setUser, setSearchParams])
 
   const isMenuOpen = Boolean(anchorEl)
@@ -121,17 +161,25 @@ export default function TopBar() {
   }
 
   const openCheckout = async () => {
+    if (!isAuth || user.role !== 'BUYER') {
+      toast.error('Требуется аккаунт покупателя (BUYER)')
+      return
+    }
+
     if (!cart.length) {
       toast.error('Корзина пуста')
       return
     }
+
     try {
       setCouriersLoading(true)
-      const list = await getCouriers()
+      const res = await getCouriers()
+      const list = normalizeCouriers(res)
       setCouriers(list)
       setCheckoutOpen(true)
     } catch (e) {
       console.log(e)
+      setCouriers([])
       toast.error('Не удалось загрузить курьеров')
     } finally {
       setCouriersLoading(false)
@@ -145,6 +193,11 @@ export default function TopBar() {
   }
 
   const submitCheckout = async () => {
+    if (!isAuth || user.role !== 'BUYER') {
+      toast.error('Требуется аккаунт покупателя (BUYER)')
+      return
+    }
+
     if (courierId === null) {
       toast.error('Выберите курьера')
       return
@@ -152,6 +205,7 @@ export default function TopBar() {
 
     try {
       setCheckoutSubmitting(true)
+
       for (const item of cart as CartItem[]) {
         for (let k = 0; k < item.amount; k++) {
           await createPurchase({
@@ -162,6 +216,7 @@ export default function TopBar() {
           })
         }
       }
+
       toast.success('Доставка оформлена')
       setCart([])
       closeCheckout()
@@ -244,7 +299,9 @@ export default function TopBar() {
     </Menu>
   )
 
-  return hideTopbar ? null : (
+  if (hideTopbar) return null
+
+  return (
     <Box sx={{ flexGrow: 1, width: 1 }}>
       <AppBar position="static">
         <Toolbar>
@@ -262,87 +319,117 @@ export default function TopBar() {
             PostVON
           </Typography>
 
-          <Link to="/products">
-            <Button sx={{ ml: 3, color: 'white' }}>Каталог</Button>
-          </Link>
+          {isAuth ? (
+            <>
+              <Link to="/products">
+                <Button sx={{ ml: 3, color: 'white' }}>Каталог</Button>
+              </Link>
 
-          {/* Постамат */}
-          {user.role === 'BUYER' && (
-            <Link to="/postomat">
-              <Button sx={{ ml: 2, color: 'white' }}>Забрать посылку</Button>
-            </Link>
+              {user.role === 'BUYER' && (
+                <Link to="/postomat">
+                  <Button sx={{ ml: 2, color: 'white' }}>
+                    Забрать посылку
+                  </Button>
+                </Link>
+              )}
+
+              {(user.role === 'COURIER' || user.role === 'ADMIN') && (
+                <Link to="/postomat">
+                  <Button sx={{ ml: 2, color: 'white' }}>Постамат</Button>
+                </Link>
+              )}
+
+              {user.role === 'BUYER' && (
+                <Link to="/client">
+                  <Button sx={{ color: 'white' }}>Посылки</Button>
+                </Link>
+              )}
+
+              {user.role === 'BUYER' && (
+                <Link to="/assistant">
+                  <Button sx={{ ml: 2, color: 'white' }}>AI Ассистент</Button>
+                </Link>
+              )}
+
+              {user.role === 'COURIER' && (
+                <Link to="/courier">
+                  <Button sx={{ color: 'white' }}>Доставки</Button>
+                </Link>
+              )}
+
+              {user.role === 'SELLER' && (
+                <Link to="/worker">
+                  <Button sx={{ color: 'white' }}>Прием товара</Button>
+                </Link>
+              )}
+
+              {user.role === 'ADMIN' && (
+                <Link to="/admin">
+                  <Button sx={{ color: 'white' }}>Админ-панель</Button>
+                </Link>
+              )}
+            </>
+          ) : (
+            <>
+              <Button
+                sx={{ ml: 3, color: 'white' }}
+                onClick={() => navigate('/auth')}
+              >
+                Войти
+              </Button>
+              <Button
+                sx={{ ml: 1, color: 'white' }}
+                onClick={() => navigate('/register')}
+              >
+                Регистрация
+              </Button>
+            </>
           )}
 
-          {(user.role === 'COURIER' || user.role === 'ADMIN') && (
-            <Link to="/postomat">
-              <Button sx={{ ml: 2, color: 'white' }}>Постамат</Button>
-            </Link>
-          )}
-
-          {user.role === 'BUYER' && (
-            <Link to="/client">
-              <Button sx={{ color: 'white' }}>Посылки</Button>
-            </Link>
-          )}
-
-          {user.role === 'BUYER' && (
-            <Link to="/assistant">
-              <Button sx={{ ml: 2, color: 'white' }}>AI Ассистент</Button>
-            </Link>
-          )}
-
-          {user.role === 'COURIER' && (
-            <Link to="/courier">
-              <Button sx={{ color: 'white' }}>Доставки</Button>
-            </Link>
-          )}
-
-          {user.role === 'SELLER' && (
-            <Link to="/worker">
-              <Button sx={{ color: 'white' }}>Прием товара</Button>
-            </Link>
-          )}
-          {user.role === 'ADMIN' && (
-            <Link to="/admin">
-              <Button sx={{ color: 'white' }}>Админ-панель</Button>
-            </Link>
-          )}
           <Box sx={{ flexGrow: 1 }} />
 
           <IconButton
             size="large"
             color="inherit"
             onClick={() => setCartOpen(true)}
+            disabled={!isAuth}
           >
             <Badge badgeContent={cart.length} color="error">
               <ShoppingCartIcon />
             </Badge>
           </IconButton>
 
-          <Stack direction="row" sx={{ display: { xs: 'none', md: 'flex' } }}>
-            <Link to="/profile">
-              <Button variant="contained" startIcon={<AccountCircle />}>
-                {user.email}
-              </Button>
-            </Link>
-          </Stack>
+          {isAuth && (
+            <Stack direction="row" sx={{ display: { xs: 'none', md: 'flex' } }}>
+              <Link to="/profile">
+                <Button variant="contained" startIcon={<AccountCircle />}>
+                  {user.email}
+                </Button>
+              </Link>
+            </Stack>
+          )}
 
-          <Box sx={{ display: { xs: 'flex', md: 'none' } }}>
-            <IconButton
-              size="large"
-              onClick={handleMobileMenuOpen}
-              color="inherit"
-            >
-              <MoreIcon />
-            </IconButton>
-          </Box>
+          {isAuth && (
+            <Box sx={{ display: { xs: 'flex', md: 'none' } }}>
+              <IconButton
+                size="large"
+                onClick={handleMobileMenuOpen}
+                color="inherit"
+              >
+                <MoreIcon />
+              </IconButton>
+            </Box>
+          )}
         </Toolbar>
       </AppBar>
 
-      {renderMobileMenu}
-      {renderMenu}
+      {isAuth ? (
+        <>
+          {renderMobileMenu}
+          {renderMenu}
+        </>
+      ) : null}
 
-      {/* Диалог выбора курьера / режима */}
       <Dialog open={checkoutOpen} onClose={closeCheckout} fullWidth>
         <DialogTitle>Оформление курьерской доставки</DialogTitle>
 
@@ -400,12 +487,12 @@ export default function TopBar() {
         </DialogActions>
       </Dialog>
 
-      {/* Drawer корзины */}
       <SwipeableDrawer
         anchor="right"
         open={cartOpen}
         onClose={() => setCartOpen(false)}
         onOpen={() => setCartOpen(true)}
+        disableSwipeToOpen
       >
         <Box sx={{ width: 420, p: 2 }}>
           <Typography variant="h6" fontWeight={700}>
@@ -459,13 +546,11 @@ export default function TopBar() {
                 </Typography>
               </Box>
 
-              {user.role === 'BUYER' && (
+              {user.role === 'BUYER' ? (
                 <Button variant="contained" onClick={openCheckout}>
                   Оформить доставку
                 </Button>
-              )}
-
-              {user.role !== 'BUYER' && (
+              ) : (
                 <Typography variant="body2" color="text.secondary">
                   Оформление доступно только покупателю (BUYER)
                 </Typography>

@@ -271,7 +271,7 @@ interface PurchaseCreationAttributes {
   postomat_id?: number | null
   courier_id?: number | null
   postomat_slot?: number | null
-  courier_mode?: CourierMode
+  courier_mode?: CourierMode | null
   courier_qr?: string | null
   client_qr?: string | null
   slot_reserved_until?: Date | null

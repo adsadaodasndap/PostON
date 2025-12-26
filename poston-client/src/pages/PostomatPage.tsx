@@ -1,8 +1,3 @@
-/* ВНИМАНИЕ:
-   Файл большой. Я не сокращаю и не “частями”, потому что ты просил “вставить и работает”.
-   Если хочешь — скажи, и я сделаю укороченную версию без MONITOR/без polling.
-*/
-import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Box,
   Button,
@@ -19,6 +14,7 @@ import { useUser } from '../context/user/useUser'
 import PostomatGrid, {
   type SlotView,
 } from '../components/postomat/PostomatGrid'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 type SlotState = { id: number; busy: boolean }
 type PostomatDTO = { id: number; adress: string; lat?: number; lon?: number }
@@ -29,6 +25,8 @@ type CourierScanResp = {
   slots: SlotState[]
   reservedSlotId: number
   reservedUntil: string | Date
+  status?: string
+  qr?: string | null
 }
 
 type SlotsResp = {
@@ -41,6 +39,14 @@ type ClientScanResp = {
   postomatId: number
   slotId: number
   status: string
+}
+
+type CourierPlaceResp = {
+  message: string
+  postomatId: number
+  slotId: number
+  qr?: string | null
+  status?: string
 }
 
 export default function PostomatPage() {
@@ -59,12 +65,10 @@ export default function PostomatPage() {
 
   const [qr, setQr] = useState('')
 
-  // courier state
   const [purchaseId, setPurchaseId] = useState<number | null>(null)
   const [reservedSlotId, setReservedSlotId] = useState<number | null>(null)
   const [doorOpened, setDoorOpened] = useState(false)
 
-  // buyer state
   const [clientSlotId, setClientSlotId] = useState<number | null>(null)
   const [clientDoorOpened, setClientDoorOpened] = useState(false)
   const [clientPurchaseId, setClientPurchaseId] = useState<number | null>(null)
@@ -103,7 +107,7 @@ export default function PostomatPage() {
     })
   }, [activeMode, slots, reservedSlotId, clientSlotId])
 
-  const loadSlots = async () => {
+  const loadSlots = useCallback(async () => {
     try {
       setLoading(true)
       const { data } = await $host.get<SlotsResp>('postomat/slots')
@@ -111,28 +115,30 @@ export default function PostomatPage() {
       setSlots(data.slots)
     } catch (e) {
       console.log(e)
-      if (activeMode !== 'BUYER') toast.error('Не удалось загрузить постамат')
+      toast.error('Не удалось загрузить постамат')
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     if (activeMode !== 'BUYER') loadSlots()
-  }, [activeMode])
+  }, [activeMode, loadSlots])
 
   useEffect(() => {
     if (activeMode === 'BUYER') return
+
     if (pollRef.current) window.clearInterval(pollRef.current)
+
     pollRef.current = window.setInterval(() => {
       if (!actionLoading) loadSlots()
     }, 5000)
+
     return () => {
       if (pollRef.current) window.clearInterval(pollRef.current)
     }
-  }, [activeMode, actionLoading])
+  }, [activeMode, actionLoading, loadSlots])
 
-  // Courier flow
   const courierScan = async () => {
     if (!qr.trim()) return toast.error('Введи QR')
     try {
@@ -147,6 +153,7 @@ export default function PostomatPage() {
       setReservedSlotId(data.reservedSlotId)
       setDoorOpened(false)
       setSlots(data.slots)
+      if (data.qr && typeof data.qr === 'string') setQr(data.qr)
       toast.success(`Ячейка #${data.reservedSlotId} зарезервирована`)
     } catch (e) {
       console.log(e)
@@ -175,10 +182,17 @@ export default function PostomatPage() {
     if (!purchaseId) return toast.error('Сначала скан QR')
     try {
       setActionLoading(true)
-      const { data } = await $host.post('postomat/courier/place', {
-        purchaseId,
-      })
+      const { data } = await $host.post<CourierPlaceResp>(
+        'postomat/courier/place',
+        {
+          purchaseId,
+        }
+      )
       toast.success(`Положено в ячейку #${data.slotId}`)
+      if (data.qr && typeof data.qr === 'string') {
+        setQr(data.qr)
+        toast.success('QR для клиента готов (тот же самый код)')
+      }
       await loadSlots()
     } catch (e) {
       console.log(e)
@@ -206,7 +220,6 @@ export default function PostomatPage() {
     }
   }
 
-  // Buyer flow
   const clientScan = async () => {
     if (!qr.trim()) return toast.error('Введи QR')
     try {
@@ -345,9 +358,7 @@ export default function PostomatPage() {
 
             <Stack spacing={1.5}>
               <TextField
-                label={
-                  activeMode === 'BUYER' ? 'QR (client_qr)' : 'QR (courier_qr)'
-                }
+                label="QR (единый)"
                 value={qr}
                 onChange={(e) => setQr(e.target.value)}
                 size="small"

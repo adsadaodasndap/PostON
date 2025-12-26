@@ -272,8 +272,9 @@ interface PurchaseCreationAttributes {
   courier_id?: number | null
   postomat_slot?: number | null
   courier_mode?: CourierMode | null
-  courier_qr?: string | null
-  client_qr?: string | null
+  qr_token?: string | null
+  qr_expires_at?: Date | null
+  qr_used_at?: Date | null
   slot_reserved_until?: Date | null
   slot_reserved_id?: number | null
   door_opened?: boolean
@@ -355,12 +356,15 @@ export class Purchase extends Model<Purchase, PurchaseCreationAttributes> {
   @Unique
   @AllowNull(true)
   @Column(DataType.STRING)
-  declare courier_qr: string | null
+  declare qr_token: string | null
 
-  @Unique
   @AllowNull(true)
-  @Column(DataType.STRING)
-  declare client_qr: string | null
+  @Column(DataType.DATE)
+  declare qr_expires_at: Date | null
+
+  @AllowNull(true)
+  @Column(DataType.DATE)
+  declare qr_used_at: Date | null
 
   @AllowNull(true)
   @Column(DataType.DATE)

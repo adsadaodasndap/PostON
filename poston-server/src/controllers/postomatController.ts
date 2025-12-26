@@ -7,6 +7,7 @@ import { Request } from '../types/Request'
 
 const POSTOMAT_ID = 1
 const RESERVE_MINUTES = 10
+const QR_TTL_DAYS = 7
 
 async function buildSlotsState() {
   const slots = await Slot.findAll({
@@ -38,30 +39,28 @@ function pickRandomFreeSlot(slots: { id: number; busy: boolean }[]) {
   return free[Math.floor(Math.random() * free.length)]
 }
 
-async function ensureUnifiedQr(purchaseId: number) {
+function isExpired(expiresAt: Date | null) {
+  if (!expiresAt) return false
+  return new Date(expiresAt).getTime() < Date.now()
+}
+
+async function ensureQrToken(purchaseId: number) {
   const purchase = await Purchase.findByPk(purchaseId)
   if (!purchase) return null
 
-  const existing = purchase.client_qr ?? purchase.courier_qr
-  if (existing) {
-    if (purchase.client_qr !== existing || purchase.courier_qr !== existing) {
-      await Purchase.update(
-        { client_qr: existing, courier_qr: existing },
-        { where: { id: purchase.id } }
-      )
-      purchase.client_qr = existing
-      purchase.courier_qr = existing
-    }
-    return purchase
-  }
+  if (purchase.qr_token) return purchase
 
   const token = crypto.randomUUID()
+  const expiresAt = new Date(Date.now() + QR_TTL_DAYS * 24 * 60 * 60 * 1000)
+
   await Purchase.update(
-    { client_qr: token, courier_qr: token },
+    { qr_token: token, qr_expires_at: expiresAt, qr_used_at: null },
     { where: { id: purchase.id } }
   )
-  purchase.client_qr = token
-  purchase.courier_qr = token
+
+  purchase.qr_token = token
+  purchase.qr_expires_at = expiresAt
+  purchase.qr_used_at = null
   return purchase
 }
 
@@ -76,7 +75,7 @@ export const courierScanQR = async (req: Request, res: Response) => {
     const purchase = await Purchase.findOne({
       where: {
         courier_id: req.user.id,
-        client_qr: String(qr),
+        qr_token: String(qr),
         date_receive: null,
       },
     })
@@ -91,7 +90,15 @@ export const courierScanQR = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'wrong_delivery_mode' })
     }
 
-    const unified = await ensureUnifiedQr(purchase.id)
+    if (purchase.qr_used_at) {
+      return res.status(410).json({ message: 'qr_already_used' })
+    }
+
+    if (isExpired(purchase.qr_expires_at ?? null)) {
+      return res.status(410).json({ message: 'qr_expired' })
+    }
+
+    const unified = await ensureQrToken(purchase.id)
     if (!unified) return res.status(404).json({ message: 'purchase_not_found' })
 
     const now = Date.now()
@@ -110,7 +117,7 @@ export const courierScanQR = async (req: Request, res: Response) => {
         reservedSlotId: unified.slot_reserved_id,
         reservedUntil: unified.slot_reserved_until,
         status: unified.status,
-        qr: unified.client_qr,
+        qr: unified.qr_token,
       })
     }
 
@@ -135,7 +142,7 @@ export const courierScanQR = async (req: Request, res: Response) => {
       reservedSlotId: chosen.id,
       reservedUntil,
       status: 'SLOT_RESERVED',
-      qr: unified.client_qr,
+      qr: unified.qr_token,
     })
   } catch (e) {
     return unexpectedError(res, e)
@@ -160,6 +167,14 @@ export const courierOpenDoor = async (req: Request, res: Response) => {
       purchase.courier_mode !== 'POSTOMAT'
     ) {
       return res.status(400).json({ message: 'wrong_delivery_mode' })
+    }
+
+    if (purchase.qr_used_at) {
+      return res.status(410).json({ message: 'qr_already_used' })
+    }
+
+    if (isExpired(purchase.qr_expires_at ?? null)) {
+      return res.status(410).json({ message: 'qr_expired' })
     }
 
     if (!purchase.slot_reserved_id || !purchase.slot_reserved_until)
@@ -203,6 +218,14 @@ export const courierPlaceParcel = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'wrong_delivery_mode' })
     }
 
+    if (purchase.qr_used_at) {
+      return res.status(410).json({ message: 'qr_already_used' })
+    }
+
+    if (isExpired(purchase.qr_expires_at ?? null)) {
+      return res.status(410).json({ message: 'qr_expired' })
+    }
+
     if (!purchase.door_opened)
       return res.status(409).json({ message: 'door_not_opened' })
 
@@ -219,7 +242,7 @@ export const courierPlaceParcel = async (req: Request, res: Response) => {
     })
     if (busy) return res.status(409).json({ message: 'slot_busy' })
 
-    const unified = await ensureUnifiedQr(purchase.id)
+    const unified = await ensureQrToken(purchase.id)
     if (!unified) return res.status(404).json({ message: 'purchase_not_found' })
 
     await Purchase.update(
@@ -236,7 +259,7 @@ export const courierPlaceParcel = async (req: Request, res: Response) => {
       message: 'parcel_placed',
       postomatId: POSTOMAT_ID,
       slotId: purchase.slot_reserved_id,
-      qr: unified.client_qr,
+      qr: unified.qr_token,
       status: 'PLACED',
     })
   } catch (e) {
@@ -262,6 +285,14 @@ export const courierCloseDoor = async (req: Request, res: Response) => {
       purchase.courier_mode !== 'POSTOMAT'
     ) {
       return res.status(400).json({ message: 'wrong_delivery_mode' })
+    }
+
+    if (purchase.qr_used_at) {
+      return res.status(410).json({ message: 'qr_already_used' })
+    }
+
+    if (isExpired(purchase.qr_expires_at ?? null)) {
+      return res.status(410).json({ message: 'qr_expired' })
     }
 
     await Purchase.update(
@@ -291,13 +322,21 @@ export const clientScanQR = async (req: Request, res: Response) => {
     const purchase = await Purchase.findOne({
       where: {
         user_id: req.user.id,
-        client_qr: String(qr),
+        qr_token: String(qr),
         date_receive: null,
       },
     })
 
     if (!purchase)
       return res.status(404).json({ message: 'purchase_not_found' })
+
+    if (purchase.qr_used_at) {
+      return res.status(410).json({ message: 'qr_already_used' })
+    }
+
+    if (isExpired(purchase.qr_expires_at ?? null)) {
+      return res.status(410).json({ message: 'qr_expired' })
+    }
 
     if (!purchase.postomat_id || !purchase.postomat_slot)
       return res.status(409).json({ message: 'parcel_not_in_postomat_yet' })
@@ -329,6 +368,14 @@ export const clientOpenDoor = async (req: Request, res: Response) => {
     const purchase = await Purchase.findByPk(Number(purchaseId))
     if (!purchase || purchase.user_id !== req.user.id)
       return res.status(404).json({ message: 'purchase_not_found' })
+
+    if (purchase.qr_used_at) {
+      return res.status(410).json({ message: 'qr_already_used' })
+    }
+
+    if (isExpired(purchase.qr_expires_at ?? null)) {
+      return res.status(410).json({ message: 'qr_expired' })
+    }
 
     if (!purchase.postomat_id || !purchase.postomat_slot)
       return res.status(409).json({ message: 'parcel_not_in_postomat_yet' })
@@ -365,11 +412,23 @@ export const clientTakeParcel = async (req: Request, res: Response) => {
     if (!purchase || purchase.user_id !== req.user.id)
       return res.status(404).json({ message: 'purchase_not_found' })
 
+    if (purchase.qr_used_at) {
+      return res.status(410).json({ message: 'qr_already_used' })
+    }
+
+    if (isExpired(purchase.qr_expires_at ?? null)) {
+      return res.status(410).json({ message: 'qr_expired' })
+    }
+
     if (!purchase.door_opened)
       return res.status(409).json({ message: 'door_not_opened' })
 
     await Purchase.update(
-      { date_receive: new Date(), status: 'PICKED_UP' },
+      {
+        date_receive: new Date(),
+        qr_used_at: new Date(),
+        status: 'PICKED_UP',
+      },
       { where: { id: purchase.id } }
     )
 

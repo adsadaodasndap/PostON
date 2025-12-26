@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Box,
   Button,
@@ -14,7 +15,6 @@ import { useUser } from '../context/user/useUser'
 import PostomatGrid, {
   type SlotView,
 } from '../components/postomat/PostomatGrid'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 type SlotState = { id: number; busy: boolean }
 type PostomatDTO = { id: number; adress: string; lat?: number; lon?: number }
@@ -26,7 +26,6 @@ type CourierScanResp = {
   reservedSlotId: number
   reservedUntil: string | Date
   status?: string
-  qr?: string | null
 }
 
 type SlotsResp = {
@@ -45,12 +44,12 @@ type CourierPlaceResp = {
   message: string
   postomatId: number
   slotId: number
-  qr?: string | null
   status?: string
 }
 
 export default function PostomatPage() {
   const { user } = useUser()
+
   const [loading, setLoading] = useState(true)
   const [postomat, setPostomat] = useState<PostomatDTO | null>(null)
   const [slots, setSlots] = useState<SlotState[]>([])
@@ -63,7 +62,7 @@ export default function PostomatPage() {
     }
   )
 
-  const [qr, setQr] = useState('')
+  const [qrToken, setQrToken] = useState('')
 
   const [purchaseId, setPurchaseId] = useState<number | null>(null)
   const [reservedSlotId, setReservedSlotId] = useState<number | null>(null)
@@ -107,6 +106,18 @@ export default function PostomatPage() {
     })
   }, [activeMode, slots, reservedSlotId, clientSlotId])
 
+  const resetCourierState = useCallback(() => {
+    setPurchaseId(null)
+    setReservedSlotId(null)
+    setDoorOpened(false)
+  }, [])
+
+  const resetClientState = useCallback(() => {
+    setClientPurchaseId(null)
+    setClientSlotId(null)
+    setClientDoorOpened(false)
+  }, [])
+
   const loadSlots = useCallback(async () => {
     try {
       setLoading(true)
@@ -140,20 +151,17 @@ export default function PostomatPage() {
   }, [activeMode, actionLoading, loadSlots])
 
   const courierScan = async () => {
-    if (!qr.trim()) return toast.error('Введи QR')
+    if (!qrToken.trim()) return toast.error('Введи QR')
     try {
       setActionLoading(true)
       const { data } = await $host.post<CourierScanResp>(
         'postomat/courier/scan',
-        {
-          qr: qr.trim(),
-        }
+        { qr: qrToken.trim() }
       )
       setPurchaseId(data.purchaseId)
       setReservedSlotId(data.reservedSlotId)
       setDoorOpened(false)
       setSlots(data.slots)
-      if (data.qr && typeof data.qr === 'string') setQr(data.qr)
       toast.success(`Ячейка #${data.reservedSlotId} зарезервирована`)
     } catch (e) {
       console.log(e)
@@ -184,15 +192,9 @@ export default function PostomatPage() {
       setActionLoading(true)
       const { data } = await $host.post<CourierPlaceResp>(
         'postomat/courier/place',
-        {
-          purchaseId,
-        }
+        { purchaseId }
       )
       toast.success(`Положено в ячейку #${data.slotId}`)
-      if (data.qr && typeof data.qr === 'string') {
-        setQr(data.qr)
-        toast.success('QR для клиента готов (тот же самый код)')
-      }
       await loadSlots()
     } catch (e) {
       console.log(e)
@@ -207,9 +209,7 @@ export default function PostomatPage() {
     try {
       setActionLoading(true)
       await $host.post('postomat/courier/close', { purchaseId })
-      setDoorOpened(false)
-      setReservedSlotId(null)
-      setPurchaseId(null)
+      resetCourierState()
       toast.success('Дверца закрыта')
       await loadSlots()
     } catch (e) {
@@ -221,13 +221,13 @@ export default function PostomatPage() {
   }
 
   const clientScan = async () => {
-    if (!qr.trim()) return toast.error('Введи QR')
+    if (!qrToken.trim()) return toast.error('Введи QR')
     try {
       setActionLoading(true)
       const { data } = await $host.post<ClientScanResp>(
         'postomat/client/scan',
         {
-          qr: qr.trim(),
+          qr: qrToken.trim(),
         }
       )
       setClientPurchaseId(data.purchaseId)
@@ -278,9 +278,7 @@ export default function PostomatPage() {
       await $host.post('postomat/client/close', {
         purchaseId: clientPurchaseId,
       })
-      setClientDoorOpened(false)
-      setClientPurchaseId(null)
-      setClientSlotId(null)
+      resetClientState()
       toast.success('Дверца закрыта')
     } catch (e) {
       console.log(e)
@@ -289,6 +287,11 @@ export default function PostomatPage() {
       setActionLoading(false)
     }
   }
+
+  useEffect(() => {
+    resetCourierState()
+    resetClientState()
+  }, [activeMode, resetCourierState, resetClientState])
 
   return (
     <Box
@@ -358,9 +361,9 @@ export default function PostomatPage() {
 
             <Stack spacing={1.5}>
               <TextField
-                label="QR (единый)"
-                value={qr}
-                onChange={(e) => setQr(e.target.value)}
+                label="QR (qr_token)"
+                value={qrToken}
+                onChange={(e) => setQrToken(e.target.value)}
                 size="small"
                 fullWidth
               />
@@ -494,13 +497,19 @@ export default function PostomatPage() {
 
               {activeMode === 'COURIER' && doorOpened && (
                 <Typography variant="body2" color="error">
-                  Дверца открыта. Чтобы уйти — нужно закрыть.
+                  Дверца открыта. Чтобы завершить — нужно закрыть.
                 </Typography>
               )}
 
               {activeMode === 'BUYER' && clientDoorOpened && (
                 <Typography variant="body2" color="error">
                   Дверца открыта. Чтобы завершить — нужно закрыть.
+                </Typography>
+              )}
+
+              {activeMode === 'BUYER' && (
+                <Typography variant="body2" color="text.secondary">
+                  Клиент видит только свою ячейку после сканирования QR.
                 </Typography>
               )}
             </Stack>

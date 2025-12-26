@@ -1,12 +1,12 @@
-import { Response } from 'express'
-import crypto from 'crypto'
 import { Branch, Postomat, Product, Purchase, Slot, User } from '../db/models'
 import unexpectedError from '../helpers/unexpectedError'
 import bot from '../modules/telegram'
+import crypto from 'crypto'
 import { Request } from '../types/Request'
-import type { CourierMode, DeliveryType } from '../db/models'
+import { Response } from 'express'
 
-const QR_TTL_DAYS = 7
+type DeliveryType = 'BRANCH' | 'POSTOMAT' | 'COURIER'
+type CourierMode = 'HOME' | 'POSTOMAT'
 
 const isDeliveryType = (v: string): v is DeliveryType =>
   v === 'BRANCH' || v === 'POSTOMAT' || v === 'COURIER'
@@ -14,10 +14,13 @@ const isDeliveryType = (v: string): v is DeliveryType =>
 const isCourierMode = (v: string): v is CourierMode =>
   v === 'HOME' || v === 'POSTOMAT'
 
-const makeQrToken = () => crypto.randomUUID()
-
-const makeQrExpiresAt = () =>
-  new Date(Date.now() + QR_TTL_DAYS * 24 * 60 * 60 * 1000)
+type CreatePurchaseBody = {
+  productId?: number
+  deliveryType?: string
+  branchId?: number | string | null
+  courierId?: number | string | null
+  courierMode?: string | null
+}
 
 export const createPurchase = async (req: Request, res: Response) => {
   try {
@@ -25,7 +28,7 @@ export const createPurchase = async (req: Request, res: Response) => {
       return res.status(401).json({ message: 'authorization_required' })
 
     const { productId, deliveryType, branchId, courierId, courierMode } =
-      req.body
+      (req.body ?? {}) as CreatePurchaseBody
 
     if (!productId || !deliveryType) {
       return res
@@ -49,18 +52,14 @@ export const createPurchase = async (req: Request, res: Response) => {
     const dt: DeliveryType = dtRaw
 
     if (dt === 'BRANCH') {
-      if (!branchId) {
+      if (branchId == null) {
         return res
           .status(400)
           .json({ message: 'Необходимо выбрать отделение связи' })
       }
       branch_id = Number(branchId)
-      courier_id = null
-      courier_mode = null
-      postomat_id = null
-      postomat_slot = null
     } else if (dt === 'COURIER') {
-      if (!courierId) {
+      if (courierId == null) {
         return res.status(400).json({ message: 'Необходимо выбрать курьера' })
       }
 
@@ -82,37 +81,35 @@ export const createPurchase = async (req: Request, res: Response) => {
       branch_id = null
       postomat_id = null
       postomat_slot = null
-    } else {
+    } else if (dt === 'POSTOMAT') {
       return res.status(400).json({ message: 'Некорректный тип доставки' })
     }
 
-    const needQr = dt === 'COURIER' && courier_mode === 'POSTOMAT'
-    const qr_token = needQr ? makeQrToken() : null
-    const qr_expires_at = needQr ? makeQrExpiresAt() : null
-    const qr_used_at = null
+    const courier_qr =
+      dt === 'COURIER' && courier_mode === 'POSTOMAT'
+        ? crypto.randomUUID()
+        : null
+
+    const client_qr =
+      dt === 'COURIER' && courier_mode === 'POSTOMAT'
+        ? crypto.randomUUID()
+        : null
 
     const newPurchase = await Purchase.create({
       user_id: req.user.id,
       product_id: product.id,
       delivery_type: dt,
-
       courier_id,
       branch_id,
       postomat_id,
       postomat_slot,
-
       courier_mode,
-
       status: dt === 'COURIER' ? 'COURIER_ASSIGNED' : 'CREATED',
-
       date_buy: new Date(),
       date_send: dt === 'COURIER' ? null : new Date(),
       date_receive: null,
-
-      qr_token,
-      qr_expires_at,
-      qr_used_at,
-
+      courier_qr,
+      client_qr,
       door_opened: false,
       slot_reserved_until: null,
       slot_reserved_id: null,
@@ -178,14 +175,16 @@ export const getPurchases = async (req: Request, res: Response) => {
   }
 }
 
+type AssignCourierBody = { courierId?: number | string }
+
 export const assignCourier = async (req: Request, res: Response) => {
   try {
     if (!req.user || req.user.role !== 'ADMIN') {
       return res.status(403).json({ message: 'forbidden' })
     }
 
-    const { id } = req.params
-    const { courierId } = req.body
+    const { id } = req.params as { id: string }
+    const { courierId } = (req.body ?? {}) as AssignCourierBody
 
     if (!courierId) {
       return res.status(400).json({ message: 'Необходимо указать курьера' })
@@ -198,41 +197,22 @@ export const assignCourier = async (req: Request, res: Response) => {
       ],
     })
 
-    if (!purchase) {
-      return res.status(404).json({ message: 'Заказ не найден' })
-    }
-
+    if (!purchase) return res.status(404).json({ message: 'Заказ не найден' })
     if (purchase.delivery_type !== 'COURIER') {
       return res
         .status(400)
         .json({ message: 'Доставка этого заказа не требует курьера' })
     }
-
     if (purchase.courier_id) {
       return res
         .status(400)
         .json({ message: 'Курьер уже назначен для этого заказа' })
     }
 
-    const courier = await User.findByPk(Number(courierId))
-    if (!courier || courier.role !== 'COURIER') {
-      return res.status(400).json({ message: 'Выбранный курьер не найден' })
-    }
-
-    const needQr = purchase.courier_mode === 'POSTOMAT'
-    const patch: Partial<Purchase> = {
-      courier_id: courier.id,
-      date_send: new Date(),
-      status: 'COURIER_ASSIGNED',
-    }
-
-    if (needQr) {
-      patch.qr_token = purchase.qr_token ?? makeQrToken()
-      patch.qr_expires_at = purchase.qr_expires_at ?? makeQrExpiresAt()
-      patch.qr_used_at = null
-    }
-
-    await Purchase.update(patch, { where: { id: purchase.id } })
+    await Purchase.update(
+      { courier_id: Number(courierId), date_send: new Date() },
+      { where: { id: purchase.id } }
+    )
 
     const updated = await Purchase.findByPk(Number(id), {
       include: [
@@ -264,7 +244,7 @@ export const markDelivered = async (req: Request, res: Response) => {
     if (!req.user)
       return res.status(401).json({ message: 'authorization_required' })
 
-    const { id } = req.params
+    const { id } = req.params as { id: string }
 
     const purchase = await Purchase.findByPk(Number(id), {
       include: [
@@ -273,9 +253,7 @@ export const markDelivered = async (req: Request, res: Response) => {
       ],
     })
 
-    if (!purchase) {
-      return res.status(404).json({ message: 'Заказ не найден' })
-    }
+    if (!purchase) return res.status(404).json({ message: 'Заказ не найден' })
 
     if (req.user.role === 'COURIER' && purchase.courier_id !== req.user.id) {
       return res.status(403).json({ message: 'forbidden' })
@@ -310,12 +288,10 @@ export const markReceived = async (req: Request, res: Response) => {
     if (!req.user)
       return res.status(401).json({ message: 'authorization_required' })
 
-    const { id } = req.params
-    const purchase = await Purchase.findByPk(Number(id))
+    const { id } = req.params as { id: string }
 
-    if (!purchase) {
-      return res.status(404).json({ message: 'Заказ не найден' })
-    }
+    const purchase = await Purchase.findByPk(Number(id))
+    if (!purchase) return res.status(404).json({ message: 'Заказ не найден' })
 
     if (purchase.user_id !== req.user.id) {
       return res.status(403).json({ message: 'forbidden' })

@@ -18,6 +18,8 @@ import PostomatGrid, {
 } from '../components/postomat/PostomatGrid'
 import QrScannerDialog from '../components/QrScannerDialog'
 
+import { QRCodeCanvas } from 'qrcode.react'
+
 type SlotState = { id: number; busy: boolean }
 type PostomatDTO = { id: number; adress: string; lat?: number; lon?: number }
 
@@ -28,6 +30,9 @@ type CourierScanResp = {
   reservedSlotId: number
   reservedUntil: string | Date
   status?: string
+  clientQr?: string
+  courierQr?: string
+  qr?: string
 }
 
 type SlotsResp = {
@@ -47,6 +52,7 @@ type CourierPlaceResp = {
   postomatId: number
   slotId: number
   status?: string
+  clientQr?: string
 }
 
 export default function PostomatPage() {
@@ -102,6 +108,12 @@ export default function PostomatPage() {
       else setActiveMode('MONITOR')
     }
   }, [searchParams, user.role])
+
+  useEffect(() => {
+    const q = String(searchParams.get('qr') || '').trim()
+    if (!q) return
+    setQrToken((prev) => (prev.trim() ? prev : q))
+  }, [searchParams])
 
   useEffect(() => {
     resetCourierState()
@@ -191,6 +203,16 @@ export default function PostomatPage() {
     },
     [qrToken]
   )
+
+  useEffect(() => {
+    if (activeMode !== 'COURIER') return
+    if (purchaseId) return
+    const q = String(searchParams.get('qr') || '').trim()
+    if (!q) return
+    if (actionLoading) return
+
+    courierScan(q)
+  }, [activeMode, purchaseId, searchParams, actionLoading, courierScan])
 
   const courierOpenDoor = async () => {
     if (!purchaseId) return toast.error('Сначала скан QR')
@@ -355,10 +377,10 @@ export default function PostomatPage() {
 
   const qrLabel =
     activeMode === 'COURIER'
-      ? 'QR (qr_token) — скан курьера'
+      ? 'QR (courier_qr) — скан курьера'
       : activeMode === 'BUYER'
-        ? 'QR (qr_token) — скан клиента'
-        : 'QR (qr_token)'
+        ? 'QR (client_qr) — скан клиента'
+        : 'QR'
 
   return (
     <Box
@@ -412,7 +434,7 @@ export default function PostomatPage() {
         >
           <Paper
             sx={{
-              flex: '0 0 380px',
+              flex: '0 0 420px',
               p: 2,
               borderRadius: 2,
               border: '1px solid #e5e5e5',
@@ -434,6 +456,29 @@ export default function PostomatPage() {
                 size="small"
                 fullWidth
               />
+
+              {activeMode === 'COURIER' && qrToken.trim() && (
+                <Paper
+                  sx={{
+                    p: 1.5,
+                    borderRadius: 1.5,
+                    border: '1px dashed #cfcfcf',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: 2,
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <Box>
+                    <Typography fontWeight={700}>QR на экране</Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Оставь на ноуте. С телефона сканируешь камерой.
+                    </Typography>
+                  </Box>
+                  <QRCodeCanvas value={qrToken.trim()} size={128} />
+                </Paper>
+              )}
 
               <Button
                 variant="outlined"

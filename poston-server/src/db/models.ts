@@ -272,12 +272,14 @@ interface PurchaseCreationAttributes {
   courier_id?: number | null
   postomat_slot?: number | null
   courier_mode?: CourierMode | null
-  qr_token?: string | null
-  qr_expires_at?: Date | null
-  qr_used_at?: Date | null
+
+  courier_qr?: string | null
+  client_qr?: string | null
+
   slot_reserved_until?: Date | null
   slot_reserved_id?: number | null
   door_opened?: boolean
+
   status?: PurchaseStatus
 }
 
@@ -333,6 +335,7 @@ export class Purchase extends Model<Purchase, PurchaseCreationAttributes> {
   @AllowNull(false)
   @Column(DataType.ENUM('HOME', 'POSTOMAT'))
   declare courier_mode: CourierMode | null
+
   @AllowNull(true)
   @ForeignKey(() => Branch)
   @Column(DataType.INTEGER)
@@ -356,15 +359,12 @@ export class Purchase extends Model<Purchase, PurchaseCreationAttributes> {
   @Unique
   @AllowNull(true)
   @Column(DataType.STRING)
-  declare qr_token: string | null
+  declare courier_qr: string | null
 
+  @Unique
   @AllowNull(true)
-  @Column(DataType.DATE)
-  declare qr_expires_at: Date | null
-
-  @AllowNull(true)
-  @Column(DataType.DATE)
-  declare qr_used_at: Date | null
+  @Column(DataType.STRING)
+  declare client_qr: string | null
 
   @AllowNull(true)
   @Column(DataType.DATE)
@@ -403,3 +403,4 @@ export class Purchase extends Model<Purchase, PurchaseCreationAttributes> {
 }
 
 sequelize.addModels([User, Branch, Postomat, Slot, Product, Review, Purchase])
+export default sequelize

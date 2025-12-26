@@ -1,15 +1,22 @@
 import { Response } from 'express'
 import { Op } from 'sequelize'
-import crypto from 'crypto'
 import { Purchase, Slot, Postomat } from '../db/models'
 import unexpectedError from '../helpers/unexpectedError'
 import { Request } from '../types/Request'
 
 const POSTOMAT_ID = 1
 const RESERVE_MINUTES = 10
-const QR_TTL_DAYS = 7
 
-async function buildSlotsState() {
+type SlotState = {
+  id: number
+  busy: boolean
+}
+
+function isNumber(v: unknown): v is number {
+  return typeof v === 'number' && Number.isFinite(v)
+}
+
+async function buildSlotsState(): Promise<SlotState[]> {
   const slots = await Slot.findAll({
     where: { postomat_id: POSTOMAT_ID },
     order: [['id', 'ASC']],
@@ -25,7 +32,10 @@ async function buildSlotsState() {
     attributes: ['postomat_slot'],
   })
 
-  const busySet = new Set(active.map((p) => p.postomat_slot as number))
+  // postomat_slot в модели: number | null → фильтруем null тип-гардом, чтобы Set<number> не ругался
+  const busySet = new Set<number>(
+    active.map((p) => p.postomat_slot).filter((v): v is number => isNumber(v))
+  )
 
   return slots.map((s) => ({
     id: s.id,
@@ -33,35 +43,10 @@ async function buildSlotsState() {
   }))
 }
 
-function pickRandomFreeSlot(slots: { id: number; busy: boolean }[]) {
+function pickRandomFreeSlot(slots: SlotState[]): SlotState | null {
   const free = slots.filter((s) => !s.busy)
   if (free.length === 0) return null
-  return free[Math.floor(Math.random() * free.length)]
-}
-
-function isExpired(expiresAt: Date | null) {
-  if (!expiresAt) return false
-  return new Date(expiresAt).getTime() < Date.now()
-}
-
-async function ensureQrToken(purchaseId: number) {
-  const purchase = await Purchase.findByPk(purchaseId)
-  if (!purchase) return null
-
-  if (purchase.qr_token) return purchase
-
-  const token = crypto.randomUUID()
-  const expiresAt = new Date(Date.now() + QR_TTL_DAYS * 24 * 60 * 60 * 1000)
-
-  await Purchase.update(
-    { qr_token: token, qr_expires_at: expiresAt, qr_used_at: null },
-    { where: { id: purchase.id } }
-  )
-
-  purchase.qr_token = token
-  purchase.qr_expires_at = expiresAt
-  purchase.qr_used_at = null
-  return purchase
+  return free[Math.floor(Math.random() * free.length)] ?? null
 }
 
 export const courierScanQR = async (req: Request, res: Response) => {
@@ -69,13 +54,13 @@ export const courierScanQR = async (req: Request, res: Response) => {
     if (!req.user)
       return res.status(401).json({ message: 'authorization_required' })
 
-    const { qr } = req.body
+    const { qr } = req.body as { qr?: string }
     if (!qr) return res.status(400).json({ message: 'qr_required' })
 
     const purchase = await Purchase.findOne({
       where: {
         courier_id: req.user.id,
-        qr_token: String(qr),
+        courier_qr: String(qr),
         date_receive: null,
       },
     })
@@ -83,6 +68,7 @@ export const courierScanQR = async (req: Request, res: Response) => {
     if (!purchase)
       return res.status(404).json({ message: 'purchase_not_found' })
 
+    // сценарий "курьер кладет в постомат"
     if (
       purchase.delivery_type !== 'COURIER' ||
       purchase.courier_mode !== 'POSTOMAT'
@@ -90,37 +76,7 @@ export const courierScanQR = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'wrong_delivery_mode' })
     }
 
-    if (purchase.qr_used_at) {
-      return res.status(410).json({ message: 'qr_already_used' })
-    }
-
-    if (isExpired(purchase.qr_expires_at ?? null)) {
-      return res.status(410).json({ message: 'qr_expired' })
-    }
-
-    const unified = await ensureQrToken(purchase.id)
-    if (!unified) return res.status(404).json({ message: 'purchase_not_found' })
-
-    const now = Date.now()
-    const reservedValid =
-      unified.slot_reserved_id &&
-      unified.slot_reserved_until &&
-      new Date(unified.slot_reserved_until).getTime() >= now
-
     const slots = await buildSlotsState()
-
-    if (reservedValid) {
-      return res.json({
-        postomatId: POSTOMAT_ID,
-        purchaseId: unified.id,
-        slots,
-        reservedSlotId: unified.slot_reserved_id,
-        reservedUntil: unified.slot_reserved_until,
-        status: unified.status,
-        qr: unified.qr_token,
-      })
-    }
-
     const chosen = pickRandomFreeSlot(slots)
     if (!chosen) return res.status(409).json({ message: 'no_free_slots' })
 
@@ -132,17 +88,16 @@ export const courierScanQR = async (req: Request, res: Response) => {
         slot_reserved_until: reservedUntil,
         status: 'SLOT_RESERVED',
       },
-      { where: { id: unified.id } }
+      { where: { id: purchase.id } }
     )
 
     return res.json({
       postomatId: POSTOMAT_ID,
-      purchaseId: unified.id,
+      purchaseId: purchase.id,
       slots,
       reservedSlotId: chosen.id,
       reservedUntil,
       status: 'SLOT_RESERVED',
-      qr: unified.qr_token,
     })
   } catch (e) {
     return unexpectedError(res, e)
@@ -154,7 +109,7 @@ export const courierOpenDoor = async (req: Request, res: Response) => {
     if (!req.user)
       return res.status(401).json({ message: 'authorization_required' })
 
-    const { purchaseId } = req.body
+    const { purchaseId } = req.body as { purchaseId?: number }
     if (!purchaseId)
       return res.status(400).json({ message: 'purchaseId_required' })
 
@@ -169,19 +124,13 @@ export const courierOpenDoor = async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'wrong_delivery_mode' })
     }
 
-    if (purchase.qr_used_at) {
-      return res.status(410).json({ message: 'qr_already_used' })
-    }
-
-    if (isExpired(purchase.qr_expires_at ?? null)) {
-      return res.status(410).json({ message: 'qr_expired' })
-    }
-
-    if (!purchase.slot_reserved_id || !purchase.slot_reserved_until)
+    if (!purchase.slot_reserved_id || !purchase.slot_reserved_until) {
       return res.status(400).json({ message: 'slot_not_reserved' })
+    }
 
-    if (new Date(purchase.slot_reserved_until).getTime() < Date.now())
+    if (new Date(purchase.slot_reserved_until).getTime() < Date.now()) {
       return res.status(409).json({ message: 'reservation_expired' })
+    }
 
     await Purchase.update(
       { door_opened: true, status: 'DOOR_OPEN' },
@@ -203,7 +152,7 @@ export const courierPlaceParcel = async (req: Request, res: Response) => {
     if (!req.user)
       return res.status(401).json({ message: 'authorization_required' })
 
-    const { purchaseId } = req.body
+    const { purchaseId } = req.body as { purchaseId?: number }
     if (!purchaseId)
       return res.status(400).json({ message: 'purchaseId_required' })
 
@@ -216,14 +165,6 @@ export const courierPlaceParcel = async (req: Request, res: Response) => {
       purchase.courier_mode !== 'POSTOMAT'
     ) {
       return res.status(400).json({ message: 'wrong_delivery_mode' })
-    }
-
-    if (purchase.qr_used_at) {
-      return res.status(410).json({ message: 'qr_already_used' })
-    }
-
-    if (isExpired(purchase.qr_expires_at ?? null)) {
-      return res.status(410).json({ message: 'qr_expired' })
     }
 
     if (!purchase.door_opened)
@@ -242,9 +183,6 @@ export const courierPlaceParcel = async (req: Request, res: Response) => {
     })
     if (busy) return res.status(409).json({ message: 'slot_busy' })
 
-    const unified = await ensureQrToken(purchase.id)
-    if (!unified) return res.status(404).json({ message: 'purchase_not_found' })
-
     await Purchase.update(
       {
         postomat_id: POSTOMAT_ID,
@@ -259,7 +197,7 @@ export const courierPlaceParcel = async (req: Request, res: Response) => {
       message: 'parcel_placed',
       postomatId: POSTOMAT_ID,
       slotId: purchase.slot_reserved_id,
-      qr: unified.qr_token,
+      clientQr: purchase.client_qr,
       status: 'PLACED',
     })
   } catch (e) {
@@ -272,7 +210,7 @@ export const courierCloseDoor = async (req: Request, res: Response) => {
     if (!req.user)
       return res.status(401).json({ message: 'authorization_required' })
 
-    const { purchaseId } = req.body
+    const { purchaseId } = req.body as { purchaseId?: number }
     if (!purchaseId)
       return res.status(400).json({ message: 'purchaseId_required' })
 
@@ -285,14 +223,6 @@ export const courierCloseDoor = async (req: Request, res: Response) => {
       purchase.courier_mode !== 'POSTOMAT'
     ) {
       return res.status(400).json({ message: 'wrong_delivery_mode' })
-    }
-
-    if (purchase.qr_used_at) {
-      return res.status(410).json({ message: 'qr_already_used' })
-    }
-
-    if (isExpired(purchase.qr_expires_at ?? null)) {
-      return res.status(410).json({ message: 'qr_expired' })
     }
 
     await Purchase.update(
@@ -316,34 +246,21 @@ export const clientScanQR = async (req: Request, res: Response) => {
     if (!req.user)
       return res.status(401).json({ message: 'authorization_required' })
 
-    const { qr } = req.body
+    const { qr } = req.body as { qr?: string }
     if (!qr) return res.status(400).json({ message: 'qr_required' })
 
     const purchase = await Purchase.findOne({
       where: {
         user_id: req.user.id,
-        qr_token: String(qr),
+        client_qr: String(qr),
         date_receive: null,
       },
     })
 
     if (!purchase)
       return res.status(404).json({ message: 'purchase_not_found' })
-
-    if (purchase.qr_used_at) {
-      return res.status(410).json({ message: 'qr_already_used' })
-    }
-
-    if (isExpired(purchase.qr_expires_at ?? null)) {
-      return res.status(410).json({ message: 'qr_expired' })
-    }
-
     if (!purchase.postomat_id || !purchase.postomat_slot)
       return res.status(409).json({ message: 'parcel_not_in_postomat_yet' })
-
-    if (purchase.status !== 'READY_FOR_PICKUP') {
-      return res.status(409).json({ message: 'not_ready_for_pickup' })
-    }
 
     return res.json({
       purchaseId: purchase.id,
@@ -361,7 +278,7 @@ export const clientOpenDoor = async (req: Request, res: Response) => {
     if (!req.user)
       return res.status(401).json({ message: 'authorization_required' })
 
-    const { purchaseId } = req.body
+    const { purchaseId } = req.body as { purchaseId?: number }
     if (!purchaseId)
       return res.status(400).json({ message: 'purchaseId_required' })
 
@@ -369,18 +286,13 @@ export const clientOpenDoor = async (req: Request, res: Response) => {
     if (!purchase || purchase.user_id !== req.user.id)
       return res.status(404).json({ message: 'purchase_not_found' })
 
-    if (purchase.qr_used_at) {
-      return res.status(410).json({ message: 'qr_already_used' })
-    }
-
-    if (isExpired(purchase.qr_expires_at ?? null)) {
-      return res.status(410).json({ message: 'qr_expired' })
-    }
-
     if (!purchase.postomat_id || !purchase.postomat_slot)
       return res.status(409).json({ message: 'parcel_not_in_postomat_yet' })
 
-    if (purchase.status !== 'READY_FOR_PICKUP') {
+    if (
+      purchase.status !== 'READY_FOR_PICKUP' &&
+      purchase.status !== 'PLACED'
+    ) {
       return res.status(409).json({ message: 'not_ready_for_pickup' })
     }
 
@@ -404,7 +316,7 @@ export const clientTakeParcel = async (req: Request, res: Response) => {
     if (!req.user)
       return res.status(401).json({ message: 'authorization_required' })
 
-    const { purchaseId } = req.body
+    const { purchaseId } = req.body as { purchaseId?: number }
     if (!purchaseId)
       return res.status(400).json({ message: 'purchaseId_required' })
 
@@ -412,23 +324,11 @@ export const clientTakeParcel = async (req: Request, res: Response) => {
     if (!purchase || purchase.user_id !== req.user.id)
       return res.status(404).json({ message: 'purchase_not_found' })
 
-    if (purchase.qr_used_at) {
-      return res.status(410).json({ message: 'qr_already_used' })
-    }
-
-    if (isExpired(purchase.qr_expires_at ?? null)) {
-      return res.status(410).json({ message: 'qr_expired' })
-    }
-
     if (!purchase.door_opened)
       return res.status(409).json({ message: 'door_not_opened' })
 
     await Purchase.update(
-      {
-        date_receive: new Date(),
-        qr_used_at: new Date(),
-        status: 'PICKED_UP',
-      },
+      { date_receive: new Date(), status: 'PICKED_UP' },
       { where: { id: purchase.id } }
     )
 
@@ -443,7 +343,7 @@ export const clientCloseDoor = async (req: Request, res: Response) => {
     if (!req.user)
       return res.status(401).json({ message: 'authorization_required' })
 
-    const { purchaseId } = req.body
+    const { purchaseId } = req.body as { purchaseId?: number }
     if (!purchaseId)
       return res.status(400).json({ message: 'purchaseId_required' })
 

@@ -39,60 +39,18 @@ const categories: { id: CategoryId; title: string }[] = [
   { id: 'furniture', title: 'Мебель' },
 ]
 
-// ⚠️ КЛЮЧИ = ТОЧНОЕ prod.name ИЗ БД
-const imageByName: Record<string, string> = {
-  'Процессор Intel Core i5-12400F':
-    '/catalog/Процессор Intel Core i5-12400F.jpg',
-  'Процессор AMD Ryzen 5 5600': '/catalog/Процессор AMD Ryzen 5 5600.jpg',
+// Vite: подхватываем ВСЕ jpg из src/assets/catalog
+const catalogImages = import.meta.glob('../assets/catalog/*.jpg', {
+  eager: true,
+  as: 'url',
+}) as Record<string, string>
 
-  'Видеокарта NVIDIA RTX 3060 12GB':
-    '/catalog/Видеокарта NVIDIA RTX 3060 12GB.jpg',
-  'Видеокарта AMD Radeon RX 6700 XT':
-    '/catalog/Видеокарта AMD Radeon RX 6700 XT.jpg',
+const FALLBACK_KEY = '../assets/catalog/_no-image.jpg'
 
-  'Материнская плата ASUS PRIME B660M':
-    '/catalog/Материнская плата ASUS PRIME B660M.jpg',
-  'Материнская плата MSI B550-A PRO':
-    '/catalog/Материнская плата MSI B550-A PRO.jpg',
-
-  'Оперативная память DDR4 16GB (2x8) 3200MHz':
-    '/catalog/Оперативная память DDR4 16GB (2x8) 3200MHz.jpg',
-  'Оперативная память DDR5 32GB (2x16) 5600MHz':
-    '/catalog/Оперативная память DDR5 32GB (2x16) 5600MHz.jpg',
-
-  'SSD NVMe 1TB Samsung 980': '/catalog/SSD NVMe 1TB Samsung 980.jpg',
-  'SSD SATA 512GB Kingston A400': '/catalog/SSD SATA 512GB Kingston A400.jpg',
-  'Жёсткий диск HDD 2TB Seagate Barracuda':
-    '/catalog/Жёсткий диск HDD 2TB Seagate Barracuda.jpg',
-
-  'Блок питания 650W Corsair RM650':
-    '/catalog/Блок питания 650W Corsair RM650.jpg',
-  'Блок питания 750W Cooler Master MWE':
-    '/catalog/Блок питания 750W Cooler Master MWE.jpg',
-
-  'Корпус ATX NZXT H510': '/catalog/Корпус ATX NZXT H510.jpg',
-  'Корпус Micro-ATX Deepcool Matrexx 40':
-    '/catalog/Корпус Micro-ATX Deepcool Matrexx 40.jpg',
-
-  'Кулер для процессора Cooler Master Hyper 212':
-    '/catalog/Кулер для процессора Cooler Master Hyper 212.jpg',
-  'Вентилятор 120mm Arctic P12': '/catalog/Вентилятор 120mm Arctic P12.jpg',
-  'Водяное охлаждение 240mm Deepcool GAMMAXX':
-    '/catalog/Водяное охлаждение 240mm Deepcool GAMMAXX.jpg',
-
-  'Термопаста Arctic MX-4 (4 г)': '/catalog/Термопаста Arctic MX-4 (4 г).jpg',
-  'Звуковая карта PCI-E Creative Sound Blaster':
-    '/catalog/Звуковая карта PCI-E Creative Sound Blaster.jpg',
-  'Клавиатура механическая Red Switch':
-    '/catalog/Клавиатура механическая Red Switch.jpg',
-  'Ковёр для мыши XL': '/catalog/Ковёр для мыши XL.jpg',
-
-  'Монитор 24 IPS 144Hz': '/catalog/Монитор 24 IPS 144Hz.jpg',
-  'Мышь игровая 16000 DPI': '/catalog/Мышь игровая 16000 DPI.jpg',
-  'Wi-Fi адаптер USB AC1300': '/catalog/Wi-Fi адаптер USB AC1300.jpg',
+function getCatalogImageUrl(productName: string): string {
+  const key = `../assets/catalog/${productName}.jpg`
+  return catalogImages[key] ?? catalogImages[FALLBACK_KEY] ?? ''
 }
-
-const fallbackImage = '/catalog/_no-image.jpg'
 
 export default function ProductsPage() {
   const { user, cart, setCart } = useUser()
@@ -121,34 +79,50 @@ export default function ProductsPage() {
   }, [])
 
   const filteredProducts = useMemo(() => {
+    // По твоему ТЗ: мебель пока пустая
     if (category === 'furniture') return []
     return products
   }, [category, products])
 
   const handleAddProduct = async () => {
     setError(null)
-    if (!newProduct.name || newProduct.cost <= 0) {
-      setError('Заполните корректно все поля')
+
+    const name = newProduct.name.trim()
+    if (
+      !name ||
+      newProduct.cost <= 0 ||
+      newProduct.length <= 0 ||
+      newProduct.width <= 0 ||
+      newProduct.height <= 0 ||
+      newProduct.weight <= 0
+    ) {
+      setError('Заполните все поля (значения должны быть больше 0)')
       return
     }
 
     await createProduct(
-      newProduct.name,
-      newProduct.cost,
-      newProduct.length,
-      newProduct.width,
-      newProduct.height,
-      newProduct.weight
+      name,
+      Number(newProduct.cost),
+      Number(newProduct.length),
+      Number(newProduct.width),
+      Number(newProduct.height),
+      Number(newProduct.weight)
     )
 
     const res = await getProducts()
     if (res?.products) setProducts(res.products as Product[])
   }
 
+  const handleDeleteProduct = async (id: number) => {
+    await deleteProduct(id)
+    const res = await getProducts()
+    if (res?.products) setProducts(res.products as Product[])
+  }
+
   return (
     <Box sx={{ p: 2 }}>
-      <Grid container spacing={2} sx={{ alignItems: 'flex-start' }}>
-        {/* ТОВАРЫ */}
+      <Grid container spacing={2} alignItems="flex-start">
+        {/* ЛЕВАЯ КОЛОНКА: ТОВАРЫ */}
         <Grid size={{ xs: 12, md: 9 }}>
           <Typography variant="h5" sx={{ mb: 2 }}>
             Товары
@@ -159,105 +133,184 @@ export default function ProductsPage() {
               <Typography variant="h6">Добавить товар</Typography>
               <Divider sx={{ my: 1 }} />
 
-              <Stack spacing={1.5} sx={{ maxWidth: 500 }}>
+              <Stack spacing={1.5} sx={{ maxWidth: 520 }}>
                 <TextField
                   label="Название"
                   value={newProduct.name}
                   onChange={(e) =>
-                    setNewProduct({ ...newProduct, name: e.target.value })
+                    setNewProduct((p) => ({ ...p, name: e.target.value }))
                   }
+                  fullWidth
                 />
-                <TextField
-                  label="Цена"
-                  type="number"
-                  value={newProduct.cost}
-                  onChange={(e) =>
-                    setNewProduct({
-                      ...newProduct,
-                      cost: Number(e.target.value),
-                    })
-                  }
-                />
+
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+                  <TextField
+                    label="Цена"
+                    type="number"
+                    inputProps={{ min: 0, step: 0.01 }}
+                    value={newProduct.cost}
+                    onChange={(e) =>
+                      setNewProduct((p) => ({
+                        ...p,
+                        cost: Number(e.target.value),
+                      }))
+                    }
+                    fullWidth
+                  />
+                  <TextField
+                    label="Вес"
+                    type="number"
+                    inputProps={{ min: 0, step: 0.01 }}
+                    value={newProduct.weight}
+                    onChange={(e) =>
+                      setNewProduct((p) => ({
+                        ...p,
+                        weight: Number(e.target.value),
+                      }))
+                    }
+                    fullWidth
+                  />
+                </Stack>
+
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+                  <TextField
+                    label="Длина"
+                    type="number"
+                    inputProps={{ min: 0, step: 0.01 }}
+                    value={newProduct.length}
+                    onChange={(e) =>
+                      setNewProduct((p) => ({
+                        ...p,
+                        length: Number(e.target.value),
+                      }))
+                    }
+                    fullWidth
+                  />
+                  <TextField
+                    label="Ширина"
+                    type="number"
+                    inputProps={{ min: 0, step: 0.01 }}
+                    value={newProduct.width}
+                    onChange={(e) =>
+                      setNewProduct((p) => ({
+                        ...p,
+                        width: Number(e.target.value),
+                      }))
+                    }
+                    fullWidth
+                  />
+                  <TextField
+                    label="Высота"
+                    type="number"
+                    inputProps={{ min: 0, step: 0.01 }}
+                    value={newProduct.height}
+                    onChange={(e) =>
+                      setNewProduct((p) => ({
+                        ...p,
+                        height: Number(e.target.value),
+                      }))
+                    }
+                    fullWidth
+                  />
+                </Stack>
 
                 {error && <Typography color="error">{error}</Typography>}
 
                 <Button variant="contained" onClick={handleAddProduct}>
-                  Создать
+                  Создать товар
                 </Button>
               </Stack>
             </Paper>
           )}
 
-          <Grid container spacing={2}>
-            {filteredProducts.map((p) => {
-              const rawImg = imageByName[p.name] ?? fallbackImage
-              const img = encodeURI(rawImg)
-              const inCart = cart.some((c) => c.id === p.id)
+          {category === 'furniture' ? (
+            <Typography color="text.secondary">
+              В категории «Мебель» пока нет товаров.
+            </Typography>
+          ) : (
+            <Grid container spacing={2}>
+              {filteredProducts.map((p) => {
+                const img = getCatalogImageUrl(p.name)
+                const inCart = cart.some((c) => c.id === p.id)
 
-              return (
-                <Grid key={p.id} size={{ xs: 12, sm: 6, md: 4 }}>
-                  <Card variant="outlined">
-                    <CardMedia
-                      component="img"
-                      height={160}
-                      image={img}
-                      alt={p.name}
-                      sx={{
-                        objectFit: 'contain',
-                        bgcolor: 'background.default',
-                      }}
-                    />
+                return (
+                  <Grid key={p.id} size={{ xs: 12, sm: 6, md: 4 }}>
+                    <Card variant="outlined" sx={{ height: '100%' }}>
+                      <CardMedia
+                        component="img"
+                        height={160}
+                        image={img}
+                        alt={p.name}
+                        onError={(e) => {
+                          const el = e.currentTarget
+                          const fallback = catalogImages[FALLBACK_KEY] ?? ''
+                          if (fallback && el.src !== fallback) el.src = fallback
+                        }}
+                        sx={{
+                          objectFit: 'contain',
+                          bgcolor: 'background.default',
+                        }}
+                      />
 
-                    <CardContent>
-                      <Typography fontWeight={600}>{p.name}</Typography>
-                      <Typography>{p.cost.toLocaleString()} ₸</Typography>
-                    </CardContent>
+                      <CardContent>
+                        <Typography fontWeight={700}>{p.name}</Typography>
+                        <Typography color="text.secondary">
+                          {Number(p.cost).toLocaleString()} ₸
+                        </Typography>
+                      </CardContent>
 
-                    <CardActions>
-                      {isBuyer &&
-                        (inCart ? (
-                          <Button startIcon={<CheckIcon />} fullWidth>
-                            В корзине
-                          </Button>
-                        ) : (
+                      <CardActions sx={{ px: 2, pb: 2 }}>
+                        {isBuyer &&
+                          (inCart ? (
+                            <Button
+                              startIcon={<CheckIcon />}
+                              variant="outlined"
+                              fullWidth
+                            >
+                              В корзине!
+                            </Button>
+                          ) : (
+                            <Button
+                              startIcon={<AddIcon />}
+                              variant="contained"
+                              fullWidth
+                              onClick={() =>
+                                setCart((prev) => [
+                                  ...prev,
+                                  {
+                                    id: p.id,
+                                    name: p.name,
+                                    price: Number(p.cost),
+                                    amount: 1,
+                                  },
+                                ])
+                              }
+                            >
+                              Купить
+                            </Button>
+                          ))}
+
+                        {isManager && (
                           <Button
-                            startIcon={<AddIcon />}
-                            variant="contained"
+                            startIcon={<DeleteOutlineIcon />}
+                            variant="outlined"
+                            color="error"
                             fullWidth
-                            onClick={() =>
-                              setCart([
-                                ...cart,
-                                {
-                                  id: p.id,
-                                  name: p.name,
-                                  price: p.cost,
-                                  amount: 1,
-                                },
-                              ])
-                            }
+                            onClick={() => handleDeleteProduct(p.id)}
                           >
-                            Купить
+                            Удалить
                           </Button>
-                        ))}
-
-                      {isManager && (
-                        <Button
-                          color="error"
-                          startIcon={<DeleteOutlineIcon />}
-                          onClick={() => deleteProduct(p.id)}
-                        >
-                          Удалить
-                        </Button>
-                      )}
-                    </CardActions>
-                  </Card>
-                </Grid>
-              )
-            })}
-          </Grid>
+                        )}
+                      </CardActions>
+                    </Card>
+                  </Grid>
+                )
+              })}
+            </Grid>
+          )}
         </Grid>
 
-        {/* КАТЕГОРИИ */}
+        {/* ПРАВАЯ КОЛОНКА: КАТЕГОРИИ */}
         <Grid size={{ xs: 12, md: 3 }}>
           <Paper sx={{ p: 2, position: 'sticky', top: 16 }}>
             <Typography variant="h6" sx={{ mb: 1 }}>
@@ -270,6 +323,7 @@ export default function ProductsPage() {
                   key={c.id}
                   selected={category === c.id}
                   onClick={() => setCategory(c.id)}
+                  sx={{ borderRadius: 1 }}
                 >
                   <ListItemText primary={c.title} />
                 </ListItemButton>

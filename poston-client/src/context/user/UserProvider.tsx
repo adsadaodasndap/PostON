@@ -30,6 +30,8 @@ interface UserProviderProps {
 }
 
 export const UserProvider = ({ children }: UserProviderProps) => {
+  const navigate = useNavigate()
+
   const loadCart = (): CartItem[] => {
     const c = localStorage.cart
     if (!c) return []
@@ -58,8 +60,7 @@ export const UserProvider = ({ children }: UserProviderProps) => {
           }
         })
         .filter((v): v is CartItem => v !== null)
-    } catch (e) {
-      console.log(e)
+    } catch {
       return []
     }
   }
@@ -67,9 +68,7 @@ export const UserProvider = ({ children }: UserProviderProps) => {
   const [user, setUser] = useState<UserData>(noUser)
   const [cart, setCart] = useState<CartItem[]>(loadCart())
   const [cartOpen, setCartOpen] = useState(false)
-
   const [sio, setSIO] = useState<Socket | null>(null)
-  const navigate = useNavigate()
 
   const login = (userData: UserData, token: string) => {
     if (!token) return
@@ -83,42 +82,49 @@ export const UserProvider = ({ children }: UserProviderProps) => {
 
   const logout = (manual: boolean = false) => {
     if (manual) {
-      if (
-        confirm(
-          'Вы уверены, что хотите выйти из аккаунта? Несохраненные изменения будут потеряны!'
-        )
-      ) {
-        localStorage.clear()
-      } else return
+      const ok = confirm(
+        'Вы уверены, что хотите выйти из аккаунта? Несохраненные изменения будут потеряны!'
+      )
+      if (!ok) return
+      localStorage.clear()
     } else {
       localStorage.removeItem('token')
     }
 
+    if (sio) {
+      sio.removeAllListeners()
+      sio.disconnect()
+      setSIO(null)
+    }
+
     setUser(noUser)
-    navigate('/')
+    setCart([])
+    setCartOpen(false)
+
+    navigate('/auth', { replace: true })
   }
 
   const requestNotificationPermission = async () => {
-    if (!('Notification' in window)) {
-      alert('This browser does not support notifications.')
+    if (!('Notification' in window)) return
+    try {
+      await Notification.requestPermission()
+    } catch {
       return
-    }
-
-    const permission = await Notification.requestPermission()
-    if (permission === 'granted') {
-      console.log('Notification permission granted!')
     }
   }
 
   useEffect(() => {
     requestNotificationPermission()
 
-    if (!localStorage.token) return
+    const token = localStorage.token
+    if (!token) {
+      navigate('/auth', { replace: true })
+      return
+    }
 
     verify().then((resv) => {
-      if (!resv) {
-        navigate('/')
-        logout()
+      if (!resv?.token || !resv?.user) {
+        logout(false)
         return
       }
 
@@ -132,7 +138,12 @@ export const UserProvider = ({ children }: UserProviderProps) => {
 
       setSIO(socket)
 
-      if (resv.user.role === 'POSTAMAT') navigate('/postamat')
+      if (resv.user.role === 'POSTAMAT') {
+        navigate('/postamat', { replace: true })
+        return
+      }
+
+      navigate('/products', { replace: true })
     })
   }, [])
 

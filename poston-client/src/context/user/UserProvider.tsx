@@ -30,109 +30,111 @@ interface UserProviderProps {
 }
 
 export const UserProvider = ({ children }: UserProviderProps) => {
+  const navigate = useNavigate()
+
+  const [user, setUser] = useState<UserData>(noUser)
+  const [cart, setCart] = useState<CartItem[]>([])
+  const [cartOpen, setCartOpen] = useState(false)
+  const [sio, setSIO] = useState<Socket | null>(null)
+
   const loadCart = (): CartItem[] => {
-    const c = localStorage.cart
-    if (!c) return []
+    const raw = localStorage.getItem('cart')
+    if (!raw) return []
 
     try {
-      const parsed = JSON.parse(c) as unknown
+      const parsed = JSON.parse(raw) as unknown
       if (!Array.isArray(parsed)) return []
 
       return parsed
         .map((it) => {
-          const obj = it as Partial<CartItem>
+          const obj = it as Partial<CartItem> & { price?: unknown }
 
           if (typeof obj.id !== 'number') return null
           if (typeof obj.name !== 'string') return null
 
-          const rawPrice = (obj as { price?: unknown }).price
-          const price = Number(rawPrice)
+          const priceNum = Number(obj.price)
+          const price = Number.isFinite(priceNum) ? priceNum : 0
+
+          const amountNum = Number(obj.amount)
           const amount =
-            typeof obj.amount === 'number' && obj.amount > 0 ? obj.amount : 1
+            Number.isFinite(amountNum) && amountNum > 0 ? amountNum : 1
 
           return {
             id: obj.id,
             name: obj.name,
-            price: Number.isFinite(price) ? price : 0,
+            price,
             amount,
-          }
+          } satisfies CartItem
         })
         .filter((v): v is CartItem => v !== null)
-    } catch (e) {
-      console.log(e)
+    } catch {
       return []
     }
   }
 
-  const [user, setUser] = useState<UserData>(noUser)
-  const [cart, setCart] = useState<CartItem[]>(loadCart())
-  const [cartOpen, setCartOpen] = useState(false)
+  useEffect(() => {
+    setCart(loadCart())
+  }, [])
 
-  const [sio, setSIO] = useState<Socket | null>(null)
-  const navigate = useNavigate()
+  useEffect(() => {
+    localStorage.setItem('cart', JSON.stringify(cart))
+  }, [cart])
 
   const login = (userData: UserData, token: string) => {
     if (!token) return
+    localStorage.setItem('token', token)
     setUser(userData)
-    localStorage.token = token
   }
-
-  useEffect(() => {
-    localStorage.cart = JSON.stringify(cart)
-  }, [cart])
 
   const logout = (manual: boolean = false) => {
-    if (manual) {
-      if (
-        confirm(
-          'Вы уверены, что хотите выйти из аккаунта? Несохраненные изменения будут потеряны!'
-        )
-      ) {
-        localStorage.clear()
-      } else return
-    } else {
+    const doLogout = () => {
+      try {
+        sio?.disconnect()
+      } catch (e) {
+        console.warn(e)
+      }
+
       localStorage.removeItem('token')
+      setUser(noUser)
+      setCartOpen(false)
+      setSIO(null)
+      navigate('/login', { replace: true })
     }
 
-    setUser(noUser)
-    navigate('/')
-  }
-
-  const requestNotificationPermission = async () => {
-    if (!('Notification' in window)) {
-      alert('This browser does not support notifications.')
+    if (manual) {
+      const ok = confirm('Вы уверены, что хотите выйти из аккаунта?')
+      if (!ok) return
+      localStorage.removeItem('cart')
+      doLogout()
       return
     }
 
-    const permission = await Notification.requestPermission()
-    if (permission === 'granted') {
-      console.log('Notification permission granted!')
-    }
+    doLogout()
   }
 
   useEffect(() => {
-    requestNotificationPermission()
+    const token = localStorage.getItem('token')
+    if (!token) return
 
-    if (!localStorage.token) return
-
-    verify().then((resv) => {
-      if (!resv) {
-        navigate('/')
-        logout()
+    verify().then((res) => {
+      if (!res?.token) {
+        logout(false)
         return
       }
 
-      login(resv.user, resv.token)
+      login(res.user, res.token)
 
       const socket = io(baseWSURL, {
         path: '/ws',
         transports: ['websocket'],
-        auth: { token: resv.token },
+        auth: { token: res.token },
       })
 
       setSIO(socket)
 
-      if (resv.user.role === 'POSTAMAT') navigate('/postamat')
+      if (res.user.role === 'POSTAMAT') {
+        navigate('/postamat', { replace: true })
+      }
     })
   }, [])
 

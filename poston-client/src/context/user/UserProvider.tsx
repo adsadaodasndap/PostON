@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { io, type Socket } from 'socket.io-client'
 import { verify } from '../../http/API'
@@ -36,6 +36,8 @@ export const UserProvider = ({ children }: UserProviderProps) => {
   const [cart, setCart] = useState<CartItem[]>([])
   const [cartOpen, setCartOpen] = useState(false)
   const [sio, setSIO] = useState<Socket | null>(null)
+
+  const authVersionRef = useRef(0)
 
   const loadCart = (): CartItem[] => {
     const raw = localStorage.getItem('cart')
@@ -88,6 +90,8 @@ export const UserProvider = ({ children }: UserProviderProps) => {
 
   const logout = (manual: boolean = false) => {
     const doLogout = () => {
+      authVersionRef.current += 1
+
       try {
         sio?.disconnect()
       } catch (e) {
@@ -116,7 +120,13 @@ export const UserProvider = ({ children }: UserProviderProps) => {
     const token = localStorage.getItem('token')
     if (!token) return
 
+    const startedAtVersion = authVersionRef.current
+    let cancelled = false
+
     verify().then((res) => {
+      if (cancelled) return
+      if (authVersionRef.current !== startedAtVersion) return
+
       if (!res?.token) {
         logout(false)
         return
@@ -136,6 +146,10 @@ export const UserProvider = ({ children }: UserProviderProps) => {
         navigate('/postamat', { replace: true })
       }
     })
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   return (

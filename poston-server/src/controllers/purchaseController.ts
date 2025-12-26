@@ -15,7 +15,7 @@ const isCourierMode = (v: string): v is CourierMode =>
   v === 'HOME' || v === 'POSTOMAT'
 
 type CreatePurchaseBody = {
-  productId?: number
+  productId?: number | string
   deliveryType?: string
   branchId?: number | string | null
   courierId?: number | string | null
@@ -30,7 +30,7 @@ export const createPurchase = async (req: Request, res: Response) => {
     const { productId, deliveryType, branchId, courierId, courierMode } =
       (req.body ?? {}) as CreatePurchaseBody
 
-    if (!productId || !deliveryType) {
+    if (productId == null || !deliveryType) {
       return res
         .status(400)
         .json({ message: 'Необходимо указать товар и тип доставки' })
@@ -58,6 +58,8 @@ export const createPurchase = async (req: Request, res: Response) => {
           .json({ message: 'Необходимо выбрать отделение связи' })
       }
       branch_id = Number(branchId)
+
+      courier_mode = 'HOME'
     } else if (dt === 'COURIER') {
       if (courierId == null) {
         return res.status(400).json({ message: 'Необходимо выбрать курьера' })
@@ -68,7 +70,14 @@ export const createPurchase = async (req: Request, res: Response) => {
         return res.status(400).json({ message: 'Выбранный курьер не найден' })
       }
 
-      const cmRaw = String(courierMode || 'HOME').toUpperCase()
+      if (!courierMode) {
+        return res.status(400).json({
+          message:
+            'Необходимо указать режим курьерской доставки (HOME или POSTOMAT)',
+        })
+      }
+
+      const cmRaw = String(courierMode).toUpperCase()
       if (!isCourierMode(cmRaw)) {
         return res
           .status(400)
@@ -108,8 +117,10 @@ export const createPurchase = async (req: Request, res: Response) => {
       date_buy: new Date(),
       date_send: dt === 'COURIER' ? null : new Date(),
       date_receive: null,
+
       courier_qr,
       client_qr,
+
       door_opened: false,
       slot_reserved_until: null,
       slot_reserved_id: null,
@@ -118,6 +129,7 @@ export const createPurchase = async (req: Request, res: Response) => {
     return res.status(201).json({
       message: 'Заказ оформлен',
       purchase: newPurchase,
+      courier_qr: newPurchase.courier_qr,
     })
   } catch (e) {
     return unexpectedError(res, e)

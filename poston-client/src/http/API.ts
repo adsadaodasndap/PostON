@@ -1,15 +1,8 @@
 import axios, { AxiosError } from 'axios'
 import { toast } from 'react-toastify'
 import { baseURL } from '../config'
-
-/**
- * Публичные запросы (без токена)
- */
 const host = axios.create({ baseURL })
 
-/**
- * Приватные запросы (с токеном)
- */
 export const $host = axios.create({ baseURL })
 
 $host.interceptors.request.use((config) => {
@@ -34,8 +27,6 @@ const handleApiError = (error: unknown) => {
   }
   console.error(error)
 }
-
-/* ===================== AUTH ===================== */
 
 export type AuthResponse = {
   message?: string
@@ -93,8 +84,6 @@ export const googleLogin = async (idToken: string) => {
     handleApiError(error)
   }
 }
-
-/* ===================== USER ===================== */
 
 export const verify = async () => {
   try {
@@ -155,8 +144,6 @@ export const confirmEmail = async (secret: string) => {
   }
 }
 
-/* ===================== ADMIN ===================== */
-
 export const getUsers = async (id?: string) => {
   try {
     const res = await $host.get('auth/users', { params: { id } })
@@ -181,11 +168,6 @@ export const createAdminUser = async (payload: {
   }
 }
 
-/* ===================== PRODUCTS ===================== */
-
-/**
- * НОРМАЛИЗОВАННЫЙ продукт — в UI cost всегда number
- */
 export type ProductDTO = {
   id: number
   name: string
@@ -196,9 +178,6 @@ export type ProductDTO = {
   weight: number
 }
 
-/**
- * СЫРОЙ ответ от backend (DECIMAL может быть string)
- */
 type ProductsResponseRaw = {
   products: Array<{
     id: number
@@ -211,9 +190,6 @@ type ProductsResponseRaw = {
   }>
 }
 
-/**
- * ЧИСТЫЙ ответ для UI
- */
 export type ProductsResponse = {
   products: ProductDTO[]
 }
@@ -226,7 +202,7 @@ export const getProducts = async (): Promise<ProductsResponse | undefined> => {
       products: res.data.products.map((p) => ({
         id: p.id,
         name: p.name,
-        cost: Number(p.cost), // 🔴 ключевой фикс
+        cost: Number(p.cost),
         length: p.length,
         width: p.width,
         height: p.height,
@@ -272,8 +248,6 @@ export const deleteProduct = async (id: number) => {
   }
 }
 
-/* ===================== ASSISTANT ===================== */
-
 export const askAssistant = async (question: string) => {
   try {
     const res = await $host.post('user/assistant', { question })
@@ -282,8 +256,6 @@ export const askAssistant = async (question: string) => {
     handleApiError(error)
   }
 }
-
-/* ===================== PURCHASE ===================== */
 
 export type DeliveryType = 'COURIER' | 'POSTOMAT' | 'BRANCH'
 export type CourierMode = 'HOME' | 'POSTOMAT'
@@ -323,27 +295,6 @@ export const getCouriers = async () => {
   }
 }
 
-export const markPurchaseDelivered = async (id: number) => {
-  try {
-    // ВАЖНО: если на сервере другой путь — см. примечание ниже
-    const res = await $host.put(`purchase/${id}/deliver`)
-    toast.success(res.data?.message ?? 'Успешно')
-    return res.data
-  } catch (error: unknown) {
-    handleApiError(error)
-  }
-}
-
-export const markPurchasePlaced = async (id: number) => {
-  try {
-    const res = await $host.put(`purchase/${id}/placed`)
-    toast.success(res.data?.message ?? 'Успешно')
-    return res.data
-  } catch (error: unknown) {
-    handleApiError(error)
-  }
-}
-
 export const receivePurchase = async (id: number) => {
   try {
     const res = await $host.put(`purchase/${id}/receive`)
@@ -353,8 +304,6 @@ export const receivePurchase = async (id: number) => {
     handleApiError(error)
   }
 }
-
-/* ===================== POSTOMAT ===================== */
 
 export const postomatCourierEnter = async (qr: string) => {
   try {

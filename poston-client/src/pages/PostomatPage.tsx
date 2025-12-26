@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   Box,
   Button,
@@ -50,6 +51,7 @@ type CourierPlaceResp = {
 
 export default function PostomatPage() {
   const { user } = useUser()
+  const [searchParams] = useSearchParams()
 
   const [loading, setLoading] = useState(true)
   const [postomat, setPostomat] = useState<PostomatDTO | null>(null)
@@ -91,10 +93,15 @@ export default function PostomatPage() {
   }, [])
 
   useEffect(() => {
-    if (user.role === 'COURIER') setActiveMode('COURIER')
-    else if (user.role === 'BUYER') setActiveMode('BUYER')
-    else setActiveMode('MONITOR')
-  }, [user.role])
+    const mode = String(searchParams.get('mode') || '').toUpperCase()
+    if (mode === 'COURIER') setActiveMode('COURIER')
+    else if (mode === 'BUYER') setActiveMode('BUYER')
+    else {
+      if (user.role === 'COURIER') setActiveMode('COURIER')
+      else if (user.role === 'BUYER') setActiveMode('BUYER')
+      else setActiveMode('MONITOR')
+    }
+  }, [searchParams, user.role])
 
   useEffect(() => {
     resetCourierState()
@@ -146,7 +153,6 @@ export default function PostomatPage() {
 
   useEffect(() => {
     if (activeMode === 'BUYER') return
-
     if (pollRef.current) window.clearInterval(pollRef.current)
 
     pollRef.current = window.setInterval(() => {
@@ -326,13 +332,9 @@ export default function PostomatPage() {
       setQrScanOpen(false)
 
       try {
-        if (activeMode === 'COURIER') {
-          await courierScan(token)
-        } else if (activeMode === 'BUYER') {
-          await clientScan(token)
-        } else {
-          toast.info('QR считан')
-        }
+        if (activeMode === 'COURIER') await courierScan(token)
+        else if (activeMode === 'BUYER') await clientScan(token)
+        else toast.info('QR считан')
       } finally {
         window.setTimeout(() => {
           scanLockRef.current = false
@@ -341,6 +343,15 @@ export default function PostomatPage() {
     },
     [activeMode, courierScan, clientScan]
   )
+
+  useEffect(() => {
+    if (activeMode !== 'COURIER') return
+    if (purchaseId) return
+    if (qrScanOpen) return
+    if (actionLoading) return
+    if (qrToken.trim()) return
+    setQrScanOpen(true)
+  }, [activeMode, purchaseId, qrScanOpen, actionLoading, qrToken])
 
   const qrLabel =
     activeMode === 'COURIER'

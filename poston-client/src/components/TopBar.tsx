@@ -326,7 +326,7 @@ export default function TopBar() {
               </Link>
 
               {user.role === 'BUYER' && (
-                <Link to="/postomat">
+                <Link to="/postamat">
                   <Button sx={{ ml: 2, color: 'white' }}>
                     Забрать посылку
                   </Button>

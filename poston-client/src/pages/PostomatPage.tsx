@@ -382,6 +382,10 @@ export default function PostomatPage() {
         ? 'QR (client_qr) — скан клиента'
         : 'QR'
 
+  useEffect(() => {
+    console.log(qrScanOpen)
+  }, [qrScanOpen])
+
   return (
     <Box
       sx={{

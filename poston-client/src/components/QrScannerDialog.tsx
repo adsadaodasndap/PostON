@@ -43,6 +43,24 @@ export default function QrScannerDialog({ open, onClose, onDetected }: Props) {
   const [isPaused, setIsPaused] = useState(false)
   const [hasPermission, setHasPermission] = useState<boolean | null>(null)
 
+  // ▶ СЛУШАТЕЛЬ ЗАКРЫТИЯ (ESC / ENTER)
+  useEffect(() => {
+    if (!open) return
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' || e.key === 'Enter') {
+        onClose()
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [open, onClose])
+
+  // ▶ Запрос доступа к камере
   useEffect(() => {
     if (!open) return
 

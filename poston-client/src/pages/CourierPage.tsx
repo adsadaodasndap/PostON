@@ -166,8 +166,8 @@ export default function CourierPage() {
                           QR для постомата (courier_qr)
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
-                          Открой на ноуте. Курьер сканирует телефоном. Затем в
-                          постомате нажимает “Сканировать QR”.
+                          Отсканируйте этот QR-код в постомате, чтобы начать
+                          выдачу посылки.
                         </Typography>
 
                         <Typography

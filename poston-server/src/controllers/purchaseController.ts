@@ -2,6 +2,7 @@ import { Branch, Postomat, Product, Purchase, Slot, User } from '../db/models'
 import unexpectedError from '../helpers/unexpectedError'
 import bot from '../modules/telegram'
 import crypto from 'crypto'
+import { sendTelegramMessage } from '../modules/telegram'
 import { Request } from '../types/Request'
 import { Response } from 'express'
 

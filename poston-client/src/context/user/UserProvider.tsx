@@ -143,7 +143,7 @@ export const UserProvider = ({ children }: UserProviderProps) => {
         return
       }
 
-      // navigate('/products', { replace: true })
+      navigate('/products', { replace: true })
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

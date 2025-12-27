@@ -57,7 +57,7 @@ const router = createBrowserRouter([
         ),
       },
       {
-        path: '/postamat',
+        path: '/postomat',
         element: (
           <WithAuth
             c={<PostomatPage />}

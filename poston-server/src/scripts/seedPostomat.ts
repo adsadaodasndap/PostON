@@ -4,7 +4,7 @@ export const seedPostomatWithSlots = async () => {
   const [p] = await Postomat.findOrCreate({
     where: { id: 1 },
     defaults: {
-      adress: 'Постомат №1 (тест)',
+      adress: 'Постомат №1, Пр.Нурсултана Назарбаева 46, Усть-Каменогорск',
       lat: 49.97,
       lon: 82.61,
     },

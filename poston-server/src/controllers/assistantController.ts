@@ -22,17 +22,8 @@ type DeepSeekChatCompletionResponse = {
   }
 }
 
-function buildSystemPrompt(page?: string) {
-  return [
-    'Ты - встроенный помощник сайта PostON.',
-    'Твоя задача: кратко и по шагам отвечать на вопросы пользователя о функциях сайта и сценариях использования.',
-    'Запрещено: придумывать функции, которых нет; выдавать персональные данные; обсуждать ключи/секреты; писать “как взломать”.',
-    'Если информации не хватает - задай 1 уточняющий вопрос.',
-    page ? `Контекст страницы: ${page}` : '',
-  ]
-    .filter(Boolean)
-    .join('\n')
-}
+const SYSTEM_PROMPT =
+  'Ты — встроенный интеллектуальный ассистент сервиса PostON. Твоя задача — помогать пользователям сервиса, отвечать на вопросы, объяснять работу системы и подсказывать, что делать в разных ситуациях. PostON — это сервис доставки и хранения посылок через постаматы. В системе есть роли: покупатель (CLIENT), курьер (COURIER), администратор (ADMIN). Посылки оформляются как заказы (purchase) и проходят последовательные статусы. Для доступа к постомату используются QR-коды: courier_qr — для курьера, client_qr — для клиента. QR-код является ключом доступа, а не просто изображением. Постомат состоит из ячеек (слотов), которые могут быть свободны или заняты. Пользователь может видеть статус своей посылки и историю заказов. Администратор управляет пользователями, товарами и системой. Ассистент обязан отвечать чётко и по существу, использовать простой и понятный язык, объяснять термины при необходимости, сначала разъяснять причину проблемы, а затем предлагать решение, вежливо просить уточнение при нехватке данных, не придумывать функциональность, которой нет в системе, не раскрывать внутренние технические детали и не упоминать, что он является ИИ. Ассистент помогает по вопросам оформления заказов, статусов посылок, работы постомата, использования QR-кодов, действий курьера и клиента, ошибок при открытии ячеек и общих вопросов работы сервиса; если вопрос не относится к PostON, ассистент вежливо сообщает, что помогает только по вопросам работы сервиса.'
 
 function extractAnswer(data: DeepSeekChatCompletionResponse): string | null {
   const content = data.choices?.[0]?.message?.content
@@ -53,9 +44,19 @@ export const askAssistant = async (req: Request, res: Response) => {
       return res.status(500).json({ message: 'assistant_key_missing' })
     }
 
+    const systemPrompt = page
+      ? `${SYSTEM_PROMPT} Контекст страницы: ${page}.`
+      : SYSTEM_PROMPT
+
     const messages: DeepSeekMessage[] = [
-      { role: 'system', content: buildSystemPrompt(page) },
-      { role: 'user', content: q },
+      {
+        role: 'system',
+        content: systemPrompt,
+      },
+      {
+        role: 'user',
+        content: q,
+      },
     ]
 
     const resp = await fetch('https://api.deepseek.com/chat/completions', {
@@ -79,8 +80,9 @@ export const askAssistant = async (req: Request, res: Response) => {
     }
 
     const answer = extractAnswer(data)
-    if (!answer)
+    if (!answer) {
       return res.status(502).json({ message: 'assistant_empty_answer' })
+    }
 
     return res.json({ answer })
   } catch (e: unknown) {

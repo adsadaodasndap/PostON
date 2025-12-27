@@ -73,7 +73,6 @@ export default function PostomatPage() {
 
   const [qrToken, setQrToken] = useState('')
   const [qrScanOpen, setQrScanOpen] = useState(false)
-  const [scannerAutoDisabled, setScannerAutoDisabled] = useState(false)
 
   const [purchaseId, setPurchaseId] = useState<number | null>(null)
   const [reservedSlotId, setReservedSlotId] = useState<number | null>(null)
@@ -99,15 +98,6 @@ export default function PostomatPage() {
     setClientDoorOpened(false)
   }, [])
 
-  const resetAll = useCallback(() => {
-    resetCourierState()
-    resetClientState()
-    setQrToken('')
-    setQrScanOpen(false)
-    setScannerAutoDisabled(true)
-    scanLockRef.current = false
-  }, [resetCourierState, resetClientState])
-
   useEffect(() => {
     const mode = String(searchParams.get('mode') || '').toUpperCase()
     if (mode === 'COURIER') setActiveMode('COURIER')
@@ -128,7 +118,6 @@ export default function PostomatPage() {
   useEffect(() => {
     resetCourierState()
     resetClientState()
-    setScannerAutoDisabled(false)
   }, [activeMode, resetCourierState, resetClientState])
 
   const grid: SlotView[] = useMemo(() => {
@@ -383,16 +372,8 @@ export default function PostomatPage() {
     if (qrScanOpen) return
     if (actionLoading) return
     if (qrToken.trim()) return
-    if (scannerAutoDisabled) return
     setQrScanOpen(true)
-  }, [
-    activeMode,
-    purchaseId,
-    qrScanOpen,
-    actionLoading,
-    qrToken,
-    scannerAutoDisabled,
-  ])
+  }, [activeMode, purchaseId, qrScanOpen, actionLoading, qrToken])
 
   const qrLabel =
     activeMode === 'COURIER'
@@ -496,7 +477,7 @@ export default function PostomatPage() {
                   <Box>
                     <Typography fontWeight={700}>QR на экране</Typography>
                     <Typography variant="body2" color="text.secondary">
-                      Отсканируйте этот QR-код в постомате курьером.
+                      Оставь на ноуте. С телефона сканируешь камерой.
                     </Typography>
                   </Box>
                   <QRCodeCanvas value={qrToken.trim()} size={128} />
@@ -505,22 +486,10 @@ export default function PostomatPage() {
 
               <Button
                 variant="outlined"
-                onClick={() => {
-                  setScannerAutoDisabled(false)
-                  setQrScanOpen(true)
-                }}
+                onClick={() => setQrScanOpen(true)}
                 disabled={actionLoading}
               >
                 Сканировать камерой
-              </Button>
-
-              <Button
-                variant="outlined"
-                color="inherit"
-                onClick={resetAll}
-                disabled={actionLoading}
-              >
-                Закрыть / Отмена
               </Button>
 
               {activeMode === 'COURIER' && (

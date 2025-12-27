@@ -48,7 +48,7 @@ export const askAssistant = async (req: Request, res: Response) => {
     const q = (question ?? '').trim()
     if (!q) return res.status(400).json({ message: 'question_required' })
 
-    const apiKey = process.env.DEEPSEEK_API_KEY
+    const apiKey = process.env.GPT_KEY
     if (!apiKey) {
       return res.status(500).json({ message: 'assistant_key_missing' })
     }

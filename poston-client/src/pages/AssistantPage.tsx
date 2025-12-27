@@ -1,62 +1,149 @@
-import { Box, Button, Typography } from '@mui/material'
-import { useState } from 'react'
+import {
+  Box,
+  Button,
+  CircularProgress,
+  Paper,
+  TextField,
+  Typography,
+} from '@mui/material'
+import { useMemo, useState } from 'react'
 import { askAssistant } from '../http/API'
 
-const AssistantPage = () => {
-  const [question, setQuestion] = useState('')
-  const [answer, setAnswer] = useState<string | null>(null)
+type Msg = {
+  role: 'user' | 'assistant'
+  text: string
+}
+
+export default function AssistantPage() {
+  const [input, setInput] = useState('')
+  const [messages, setMessages] = useState<Msg[]>([
+    {
+      role: 'assistant',
+      text: 'Задай вопрос про функции сайта PostON. Например: "Как курьеру положить посылку в постомат?"',
+    },
+  ])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const askQuestion = async () => {
+  const canSend = useMemo(
+    () => input.trim().length > 0 && !loading,
+    [input, loading]
+  )
+
+  const send = async () => {
     setError(null)
-    setAnswer(null)
-    if (!question.trim()) {
-      setError('Введите вопрос')
-      return
-    }
+    const q = input.trim()
+    if (!q) return
+
+    setMessages((prev) => [...prev, { role: 'user', text: q }])
+    setInput('')
     setLoading(true)
-    const data = await askAssistant(question)
-    if (!data) {
-      setError('Ошибка при получении ответа')
+
+    try {
+      const data = await askAssistant(q, 'assistant_page')
+      if (!data?.answer) {
+        setError('Не удалось получить ответ')
+        setLoading(false)
+        return
+      }
+      setMessages((prev) => [...prev, { role: 'assistant', text: data.answer }])
+    } catch {
+      setError('Ошибка сети/сервера')
+    } finally {
       setLoading(false)
-      return
     }
-    setAnswer(data)
-    setLoading(false)
   }
 
   return (
-    <div>
-      <Typography variant="h2">AI Ассистент</Typography>
-      <Typography>
-        Задайте вопрос, и искусственный интеллект ответит на него.
+    <Box sx={{ maxWidth: 900, mx: 'auto', p: 2 }}>
+      <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5 }}>
+        AI-ассистент PostON
       </Typography>
-      <Box>
-        <textarea
-          rows={4}
-          cols={50}
-          value={question}
-          onChange={(e) => setQuestion(e.target.value)}
-          placeholder="Ваш вопрос..."
-        />
-      </Box>
-      <Button
-        onClick={askQuestion}
-        disabled={loading}
-        style={{ marginTop: '5px' }}
+      <Typography variant="body2" sx={{ opacity: 0.8, mb: 2 }}>
+        Помощь по интерфейсу и сценариям сайта. Ничего не сохраняется.
+      </Typography>
+
+      <Paper
+        elevation={2}
+        sx={{
+          p: 2,
+          height: '60vh',
+          overflow: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 1.2,
+          borderRadius: 2,
+        }}
       >
-        {loading ? 'Запрос...' : 'Спросить'}
-      </Button>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      {answer && (
-        <div style={{ marginTop: '1rem', whiteSpace: 'pre-wrap' }}>
-          <strong>Ответ:</strong>
-          <p>{answer}</p>
-        </div>
+        {messages.map((m, idx) => (
+          <Box
+            key={idx}
+            sx={{
+              display: 'flex',
+              justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start',
+            }}
+          >
+            <Box
+              sx={{
+                maxWidth: '80%',
+                p: 1.2,
+                borderRadius: 2,
+                bgcolor: m.role === 'user' ? 'primary.main' : 'grey.100',
+                color:
+                  m.role === 'user' ? 'primary.contrastText' : 'text.primary',
+                whiteSpace: 'pre-wrap',
+                lineHeight: 1.35,
+              }}
+            >
+              {m.text}
+            </Box>
+          </Box>
+        ))}
+
+        {loading && (
+          <Box sx={{ display: 'flex', justifyContent: 'flex-start', mt: 1 }}>
+            <Box
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 1,
+                p: 1,
+                borderRadius: 2,
+                bgcolor: 'grey.100',
+              }}
+            >
+              <CircularProgress size={16} />
+              <Typography variant="body2">Думаю…</Typography>
+            </Box>
+          </Box>
+        )}
+      </Paper>
+
+      {error && (
+        <Typography sx={{ color: 'error.main', mt: 1 }}>{error}</Typography>
       )}
-    </div>
+
+      <Box sx={{ display: 'flex', gap: 1, mt: 2 }}>
+        <TextField
+          fullWidth
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder='Например: "Как отсканировать QR курьеру?"'
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault()
+              if (canSend) void send()
+            }
+          }}
+        />
+        <Button
+          variant="contained"
+          disabled={!canSend}
+          onClick={() => void send()}
+        >
+          Отправить
+        </Button>
+      </Box>
+    </Box>
   )
 }
-
-export default AssistantPage

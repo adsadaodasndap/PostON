@@ -5,6 +5,7 @@ import ordersRouter from './orders.js'
 import purchaseRouter from './purchaseRouter.js'
 import accessLevel from '../middleware/accessLevel.js'
 import postomatRouter from './postomatRouter.js'
+import assistantRouter from './assistantRouter.js'
 
 const router = Router()
 
@@ -28,5 +29,7 @@ router.use(
   accessLevel(['ADMIN', 'SELLER', 'BUYER', 'COURIER', 'POSTAMAT']),
   postomatRouter
 )
+
+router.use('/assistant', assistantRouter)
 
 export default router

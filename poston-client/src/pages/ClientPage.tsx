@@ -15,36 +15,12 @@ import {
   Typography,
 } from '@mui/material'
 import type { Purchase } from '../types'
-import { Scanner } from '@yudiel/react-qr-scanner'
-import { toast } from 'react-toastify'
-import { getPurchases, receivePurchase, scanPostamat } from '../http/API'
+import { getPurchases, receivePurchase } from '../http/API'
 
 type RatingState = {
   pointsProduct: number | null
   pointsDelivery: number | null
   content: string
-}
-
-const highlightCodeOnCanvas = (detectedCodes: any, ctx: any) => {
-  detectedCodes.forEach((detectedCode: any) => {
-    const { boundingBox, cornerPoints } = detectedCode
-
-    ctx.strokeStyle = '#00FF00'
-    ctx.lineWidth = 4
-    ctx.strokeRect(
-      boundingBox.x,
-      boundingBox.y,
-      boundingBox.width,
-      boundingBox.height
-    )
-
-    ctx.fillStyle = '#FF0000'
-    cornerPoints.forEach((point: any) => {
-      ctx.beginPath()
-      ctx.arc(point.x, point.y, 5, 0, 2 * Math.PI)
-      ctx.fill()
-    })
-  })
 }
 
 function formatDeliveryType(type: Purchase['delivery_type']) {
@@ -58,23 +34,6 @@ function isDelivered(p: Purchase) {
 }
 
 export default function ClientPage() {
-  const [isPaused, setIsPaused] = React.useState(false)
-  const [hasPermission, setHasPermission] = React.useState(false)
-
-  const requestCameraPermission = async () => {
-    try {
-      await navigator.mediaDevices.getUserMedia({ video: true })
-      setHasPermission(true)
-    } catch (e) {
-      console.error('Нет доступа к камере', e)
-      setHasPermission(false)
-      toast.info('Разрешение на камеру отклонено.')
-    }
-  }
-
-  React.useEffect(() => {
-    requestCameraPermission()
-  }, [])
   const [purchases, setPurchases] = React.useState<Purchase[]>([])
   const [loadingPurchases, setLoadingPurchases] = React.useState(false)
 
@@ -129,6 +88,7 @@ export default function ClientPage() {
   const handleOpenRating = (purchaseId: number) => {
     const purchase = purchases.find((p) => p.id === purchaseId)
     setSelectedPurchaseId(purchaseId)
+
     if (purchase && purchase.review) {
       setRating({
         pointsProduct: purchase.review.points_product,
@@ -142,6 +102,7 @@ export default function ClientPage() {
         content: '',
       })
     }
+
     setRatingDialogOpen(true)
   }
 
@@ -149,6 +110,7 @@ export default function ClientPage() {
     setRatingDialogOpen(false)
     setSelectedPurchaseId(null)
   }
+
   const handleSubmitRating = () => {
     if (!selectedPurchase) return
     if (!rating.pointsProduct || !rating.pointsDelivery) return
@@ -172,6 +134,7 @@ export default function ClientPage() {
           : p
       )
     )
+
     setRatingDialogOpen(false)
     setSelectedPurchaseId(null)
   }
@@ -189,41 +152,6 @@ export default function ClientPage() {
         flexWrap: 'wrap',
       }}
     >
-      {hasPermission && (
-        <Scanner
-          onScan={(result) => {
-            if (result) {
-              const val = result[0].rawValue
-              console.log(val)
-              setIsPaused(true)
-
-              scanPostamat(val).then((res) => {
-                if (res) {
-                  if (res.status === 'EMPTY') {
-                    toast.info('В этом постамате нет ваших товаров!')
-                  } else if (res.status === 'ID') {
-                    toast.info('Заберите ваш товар!')
-                  }
-                }
-                setTimeout(() => setIsPaused(false), 1200)
-              })
-            }
-          }}
-          onError={(error) => console.log(error)}
-          formats={['qr_code']}
-          components={{
-            tracker: highlightCodeOnCanvas,
-          }}
-          paused={isPaused}
-          constraints={{
-            facingMode: 'environment',
-            aspectRatio: 1,
-            width: { ideal: 500 },
-            height: { ideal: 500 },
-          }}
-        />
-      )}
-
       <Paper
         sx={{
           maxWidth: 900,

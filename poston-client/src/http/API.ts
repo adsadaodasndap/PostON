@@ -1,6 +1,7 @@
 import axios, { AxiosError } from 'axios'
 import { toast } from 'react-toastify'
 import { baseURL } from '../config'
+
 const host = axios.create({ baseURL })
 
 export const $host = axios.create({ baseURL })
@@ -247,10 +248,17 @@ export const deleteProduct = async (id: number) => {
     handleApiError(error)
   }
 }
+export type AskAssistantResponse = { answer: string }
 
-export const askAssistant = async (question: string) => {
+export const askAssistant = async (
+  question: string,
+  page?: string
+): Promise<AskAssistantResponse | undefined> => {
   try {
-    const res = await $host.post('user/assistant', { question })
+    const res = await $host.post<AskAssistantResponse>('assistant/ask', {
+      question,
+      page,
+    })
     return res.data
   } catch (error: unknown) {
     handleApiError(error)

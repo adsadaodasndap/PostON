@@ -1,8 +1,8 @@
 import { Router } from 'express'
-import { askGPT } from '../controllers/assistantController'
+import { askAssistant } from '../controllers/assistantController'
 
-// @ts-expect-error ????
-const router = new Router()
-router.post('/ask', askGPT)
+const router = Router()
+
+router.post('/ask', askAssistant)
 
 export default router

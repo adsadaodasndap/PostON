@@ -334,7 +334,7 @@ export default function TopBar() {
               )}
 
               {(user.role === 'COURIER' || user.role === 'ADMIN') && (
-                <Link to="/postomat">
+                <Link to="/postamat">
                   <Button sx={{ ml: 2, color: 'white' }}>Постамат</Button>
                 </Link>
               )}

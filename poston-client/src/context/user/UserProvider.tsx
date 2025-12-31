@@ -139,7 +139,7 @@ export const UserProvider = ({ children }: UserProviderProps) => {
       setSIO(socket)
 
       if (resv.user.role === 'POSTAMAT') {
-        navigate('/postamat', { replace: true })
+        navigate('/postomat', { replace: true })
         return
       }
 

@@ -41,7 +41,7 @@ const Login = () => {
 
       // Роутинг по роли (если у тебя другая логика — меняешь здесь)
       if (res.user.role === 'POSTAMAT') {
-        navigate('/postamat')
+        navigate('/postomat')
         return
       }
 
